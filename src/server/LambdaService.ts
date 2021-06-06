@@ -1,4 +1,5 @@
 import serverlessExpress from '@vendia/serverless-express';
 import ContentService from './ContentService';
 
-export default serverlessExpress({ app: ContentService });
+// eslint-disable-next-line import/prefer-default-export
+export const serveFiles = serverlessExpress({ app: ContentService });

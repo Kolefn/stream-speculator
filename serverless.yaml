@@ -3,3 +3,36 @@ frameworkVersion: '2'
 configValidationMode: 'error'
 variablesResolutionMode: 20210326
 useDotenv: true
+
+plugins:
+  - serverless-domain-manager
+
+custom:
+  customDomain:
+    http:
+      domainName: ${env:DOMAIN_NAME}
+      certificateName: ${env:DOMAIN_CERTIFICATE_NAME}
+      createRoute53Record: true
+      endpointType: 'regional'
+      autoDomain: true
+
+provider:
+  name: aws 
+  runtime: nodejs14.x
+  memorySize: 128
+  stage: ${opt:stage, 'dev'}
+  region: ${opt:region, 'us-east-1'}
+  stackName: ${self:service}-${self:provider.stage}
+  environment:
+    PUBLIC_FOLDER_PATH: src/public
+  
+package:
+  patterns:
+    - build/server/**
+    - src/public/**
+
+functions:
+  serveFiles:
+      handler: build/server/LambdaService.serveFiles
+      events:
+        - httpApi: '*'
