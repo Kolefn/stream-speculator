@@ -1,0 +1,5 @@
+service: stream-speculator
+frameworkVersion: '2'
+configValidationMode: 'error'
+variablesResolutionMode: 20210326
+useDotenv: true
