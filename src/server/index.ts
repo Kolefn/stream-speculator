@@ -1,3 +1,2 @@
-import ContentService from './ContentService';
-
-export { ContentService };
+export { default as ExpressApp } from './ExpressApp';
+export * as LambdaHandlers from './LambdaHandlers';

@@ -28,11 +28,12 @@ provider:
   
 package:
   patterns:
+    - '!./**'
     - build/server/**
     - src/public/**
 
 functions:
   serveFiles:
-      handler: build/server/LambdaService.serveFiles
+      handler: build/server.serveFiles
       events:
         - httpApi: '*'
