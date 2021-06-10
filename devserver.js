@@ -6,6 +6,7 @@ const childProcess = require('child_process');
 const exec = promisify(childProcess.exec);
 
 process.env.PUBLIC_FOLDER_PATH = 'src/public';
+process.env.VIEWS_FOLDER_PATH = 'src/views';
 
 let clientBundling = false;
 const clientWatcher = chokidar.watch('./src/client').on('all', async () => {
@@ -25,8 +26,9 @@ const restartServer = () => {
     server.close();
   }
   // eslint-disable-next-line global-require
-  const service = require('./build/server/ContentService').default;
+  const service = require('./build/server/ExpressApp').default;
   server = service.listen(8080);
+  server.on('error', (err)=> console.error(err));
 };
 
 let serverCompiling = false;

@@ -25,12 +25,14 @@ provider:
   stackName: ${self:service}-${self:provider.stage}
   environment:
     PUBLIC_FOLDER_PATH: src/public
+    VIEWS_FOLDER_PATH: src/views
   
 package:
   patterns:
     - '!./**'
     - build/server/**
     - src/public/**
+    - src/views/**
 
 functions:
   serveFiles:
