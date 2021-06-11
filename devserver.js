@@ -1,4 +1,5 @@
 // eslint-disable-next-line import/no-extraneous-dependencies
+require('dotenv').config({ path: './.env.dev' });
 const chokidar = require('chokidar');
 const { promisify } = require('util');
 const childProcess = require('child_process');

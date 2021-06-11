@@ -20,22 +20,23 @@ provider:
   name: aws 
   runtime: nodejs14.x
   memorySize: 128
+  lambdaHashingVersion: 20201221
   stage: ${opt:stage, 'dev'}
   region: ${opt:region, 'us-east-1'}
   stackName: ${self:service}-${self:provider.stage}
   environment:
     PUBLIC_FOLDER_PATH: src/public
-    VIEWS_FOLDER_PATH: src/views
   
 package:
   patterns:
     - '!./**'
+    - node_modules/**
     - build/server/**
     - src/public/**
-    - src/views/**
 
 functions:
-  serveFiles:
-      handler: build/server.serveFiles
+  default:
+      handler: build/server/ServerlessExpressApp.default
       events:
         - httpApi: '*'
+  

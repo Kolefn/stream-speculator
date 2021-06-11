@@ -1,0 +1,28 @@
+CreateCollection({name: "Channels"})
+CreateCollection({name: "Streams"})
+CreateCollection({name: "ChannelWebhookSubs"})
+
+CreateIndex({
+  name: "Channels_by_login",
+  source: Collection("Channels"),
+  terms: [
+    { field: ["data", "login"]}
+  ]
+})
+
+CreateIndex({
+  name: "Streams_by_channelRef",
+  source: Collection("Streams"),
+  terms: [
+    { field: ["data", "channelRef" ] }
+  ]
+})
+
+CreateRole({
+  name: "Guest",
+  privileges: [
+    {resource: Collection("Channels"), actions: {read: true}},
+    {resource: Collection("Streams"), actions: {read: true}},
+    {resource: Index("Streams_with_channelLogin"), actions: {read:true}}
+  ]
+})
