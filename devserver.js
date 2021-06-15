@@ -7,7 +7,8 @@ const childProcess = require('child_process');
 const exec = promisify(childProcess.exec);
 
 process.env.PUBLIC_FOLDER_PATH = 'src/public';
-process.env.VIEWS_FOLDER_PATH = 'src/views';
+process.env.LOCAL = 'true';
+
 
 let clientBundling = false;
 const clientWatcher = chokidar.watch('./src/client').on('all', async () => {
@@ -26,27 +27,29 @@ const restartServer = () => {
   if (server) {
     server.close();
   }
-  // eslint-disable-next-line global-require
+  const SchedulerClient = require('./build/server/SchedulerClient').default;
+  const ScheduledTaskHandler = require('./build/server/ScheduledTaskHandler').default;
+  SchedulerClient.localHandler = (task)=> ScheduledTaskHandler([task]);
   const service = require('./build/server/ExpressApp').default;
   server = service.listen(8080);
   server.on('error', (err)=> console.error(err));
 };
 
-let serverCompiling = false;
-const serverWatcher = chokidar.watch('./src/server').on('all', async () => {
-  if (serverCompiling) { return; }
-  serverCompiling = true;
-  exec('npm run compile').then(() => {
-    console.log('re-compiled. restarting server.');
-    restartServer();
-  }).catch((e) => console.error(e))
-    .finally(() => { serverCompiling = false; });
-});
+// let serverCompiling = false;
+// const serverWatcher = chokidar.watch('./src/server').on('all', async () => {
+//   if (serverCompiling) { return; }
+//   serverCompiling = true;
+//   exec('npm run compile').then(() => {
+//     console.log('re-compiled. restarting server.');
+//     restartServer();
+//   }).catch((e) => console.error(e))
+//     .finally(() => { serverCompiling = false; });
+// });
 
 restartServer();
 
 process.on('beforeExit', async () => {
   server.close();
   await clientWatcher.close();
-  await serverWatcher.close();
+  //await serverWatcher.close();
 });

@@ -26,6 +26,8 @@ provider:
   stackName: ${self:service}-${self:provider.stage}
   environment:
     PUBLIC_FOLDER_PATH: src/public
+    REGION: ${self:provider.region}
+    SQS_QUEUE_URL:
   
 package:
   patterns:

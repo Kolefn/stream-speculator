@@ -1,6 +1,8 @@
 CreateCollection({name: "Channels"})
 CreateCollection({name: "Streams"})
 CreateCollection({name: "ChannelWebhookSubs"})
+CreateCollection({name: "TwitchClientAccessTokens"})
+CreateCollection({name: "Metadata"})
 
 CreateIndex({
   name: "Channels_by_login",
@@ -15,6 +17,14 @@ CreateIndex({
   source: Collection("Streams"),
   terms: [
     { field: ["data", "channelRef" ] }
+  ]
+})
+
+CreateIndex({
+  name: "Metadata_by_flag",
+  source: Collection("Metadata"),
+  terms: [
+    { field: ["data", "flag"]}
   ]
 })
 
