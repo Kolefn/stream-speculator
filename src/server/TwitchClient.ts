@@ -57,7 +57,7 @@ export default class TwitchClient {
   }
 
   static getSecondsBeforeNextViewerCountUpdate(): number {
-    const sec = new Date(Date.now()).getSeconds();
+    const sec = new Date().getSeconds();
     if (sec >= 30) {
       return 60 - sec;
     }

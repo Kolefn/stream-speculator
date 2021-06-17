@@ -8,6 +8,7 @@ type Channel = {
 };
 
 type LiveStream = {
+  id: string;
   channelRef: string;
   startedAt: number;
   viewerCount: number;
@@ -80,6 +81,7 @@ export default class DBClient {
     };
     const stream = {
       channelRef: '',
+      id,
       startedAt: startDate.getTime(),
       viewerCount: viewers,
     };
@@ -153,4 +155,20 @@ export default class DBClient {
       ),
     );
   }
+
+  async createGuestUser(ttlDays: number) : Promise<string> {
+    const doc: any = await this.client.query(q.Create(q.Collection("Users"), { 
+      data: { isGuest: true }, 
+      ttl: q.TimeAdd(q.Now(), ttlDays, 'days')
+    }));
+    return doc.ref.id;
+  };
+
+  async createUserToken(userId: string, ttlSec: number) : Promise<string> {
+    const tokenDoc: any = await this.client.query(q.Create(q.Tokens(), { 
+      instance: q.Ref(q.Collection("Users"), userId),
+      ttl: q.TimeAdd(q.Now(), ttlSec, 'seconds')
+    }));
+    return tokenDoc.secret;
+  };
 }

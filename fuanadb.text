@@ -3,6 +3,7 @@ CreateCollection({name: "Streams"})
 CreateCollection({name: "ChannelWebhookSubs"})
 CreateCollection({name: "TwitchClientAccessTokens"})
 CreateCollection({name: "Metadata"})
+CreateCollection({name: "Users" })
 
 CreateIndex({
   name: "Channels_by_login",
@@ -30,9 +31,17 @@ CreateIndex({
 
 CreateRole({
   name: "Guest",
+  membership: [
+    {
+      resource: Collection("Users"),
+      predicate: Query(ref =>
+        Select(["data", "isGuest"], Get(ref), false)
+      )
+    }
+  ],
   privileges: [
     {resource: Collection("Channels"), actions: {read: true}},
     {resource: Collection("Streams"), actions: {read: true}},
-    {resource: Index("Streams_with_channelLogin"), actions: {read:true}}
+    {resource: Index("Streams_by_channelRef"), actions: {read:true}}
   ]
 })

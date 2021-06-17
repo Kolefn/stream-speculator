@@ -33,7 +33,7 @@ export default (event: any) => {
         await twitch.subToChannelEvents(task.data.channelId);
       } else if (task.name === 'startMonitoringStreams') {
         if (await db.setIsMonitoringStreams()) {
-          scheduler.schedule({
+          await scheduler.schedule({
             name: 'monitorStreams',
             data: {},
             delaySeconds: getMonitorStreamsDelaySeconds(MONITOR_STREAMS_HEAD_START_SEC),
@@ -45,10 +45,10 @@ export default (event: any) => {
           data: page,
           delaySeconds: getMonitorStreamsDelaySeconds(GET_STREAM_UPDATES_HEAD_START_SEC),
         }), TwitchClient.MaxWebsocketTopicsPerIP);
-        scheduler.schedule({
+        await scheduler.schedule({
           name: 'monitorStreams',
           data: {},
-          delaySeconds: getMonitorStreamsDelaySeconds(MONITOR_STREAMS_HEAD_START_SEC) + 30,
+          delaySeconds: TwitchClient.getSecondsBeforeNextViewerCountUpdate() + 30 - MONITOR_STREAMS_HEAD_START_SEC,
         });
       } else if (task.name === 'getStreamUpdates') {
         const updates = await twitch.getStreamViewerCounts(Object.keys(task.data));
