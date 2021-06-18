@@ -75,7 +75,7 @@ ExpressApp.get('/api/twitch/:channelName', async (req, res) => {
 
 ExpressApp.use(express.static(process.env.PUBLIC_FOLDER_PATH as string));
 
-ExpressApp.use('/twitch/:channelName', (_req, res) => {
+ExpressApp.get('/twitch/:channelName', (_req, res) => {
   res.sendFile(path.resolve(process.cwd(), `${process.env.PUBLIC_FOLDER_PATH}/index.html`));
 });
 
