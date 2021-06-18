@@ -5,8 +5,8 @@ import {
   Switch,
   Route,
 } from 'react-router-dom';
-import HomePage from './HomePage';
-import TwitchChannelPage from './TwitchChannelPage';
+import HomePage from './pages/HomePage';
+import TwitchChannelPage from './pages/TwitchChannelPage';
 
 const App = () => (
   <Router>
