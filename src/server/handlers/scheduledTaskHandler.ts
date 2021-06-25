@@ -50,6 +50,7 @@ export default (event: any) => {
           await db.exec(DB.batch(...Object.keys(updates).map((channelId)=> {
             return DB.create<StreamMetric>(DB.streamMetrics, updates[channelId]);
           })));
+          break;
       }
     }catch(e){
       console.error(e);
