@@ -11,18 +11,30 @@ export type LoginAsGuestResponse = {
     dbToken: DBToken;
 };
 
-export type TwitchChannel = {
+export type TwitchStream = {
   id: string;
-  login: string;
-};
-
-type TwitchStream = {
-  id: string;
-  channelId: string;
   startedAt: UnixEpochTime;
 };
 
+export type TwitchChannel = {
+  id: string;
+  displayName: string;
+  userName: string;
+  stream?: TwitchStream;
+};
+
+
 export type TwitchChannelPageData = {
     channel: TwitchChannel,
-    stream?: TwitchStream,
 }
+
+export enum StreamMetricType {
+  ViewerCount = 1
+}
+
+export type StreamMetric = {
+  channelId: string;
+  type: StreamMetricType;
+  value: number;
+  timestamp: number;
+};

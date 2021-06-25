@@ -1,5 +1,5 @@
 import { getDBToken, loginAsGuest } from "../api/endpoints";
-import { DBToken } from "../api/types";
+import { DBToken } from "../common/types";
 import useRequest from "./useRequest";
 
 export default () : [DBToken | null, Error | null]=>{

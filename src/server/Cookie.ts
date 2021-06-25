@@ -10,11 +10,7 @@ export default class Cookie {
         this.data = data;
         this.ttlMs = ttlMs;
     }
-
-    addToResponse(res: any) {
-        res.setHeader("Set-Cookie", this.serialize());
-    }
-
+    
     serialize(){
         return cookie.serialize(this.name, 
             signer.sign(JSON.stringify(this.data), process.env.COOKIE_SIGNING_KEY as string), { 
