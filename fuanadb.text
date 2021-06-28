@@ -1,31 +1,31 @@
 CreateCollection({name: "Channels"})
-CreateCollection({name: "Streams"})
+CreateCollection({name: "StreamMetrics"})
 CreateCollection({name: "ChannelWebhookSubs"})
 CreateCollection({name: "TwitchClientAccessTokens"})
-CreateCollection({name: "Metadata"})
+CreateCollection({name: "ScheduledTasks"})
 CreateCollection({name: "Users" })
 
 CreateIndex({
-  name: "Channels_by_login",
+  name: "Channels_by_userName",
   source: Collection("Channels"),
   terms: [
-    { field: ["data", "login"]}
+    { field: ["data", "userName"]}
   ]
 })
 
 CreateIndex({
-  name: "Streams_by_channelRef",
-  source: Collection("Streams"),
+  name: "ScheduledTasks_by_name",
+  source: Collection("ScheduledTasks"),
   terms: [
-    { field: ["data", "channelRef" ] }
+    { field: ["data", "name"]}
   ]
 })
 
 CreateIndex({
-  name: "Metadata_by_flag",
-  source: Collection("Metadata"),
+  name: "StreamMetrics_by_channelRef",
+  source: Collection("StreamMetrics"),
   terms: [
-    { field: ["data", "flag"]}
+    { field: ["data", "channelRef"] }
   ]
 })
 
@@ -41,7 +41,7 @@ CreateRole({
   ],
   privileges: [
     {resource: Collection("Channels"), actions: {read: true}},
-    {resource: Collection("Streams"), actions: {read: true}},
-    {resource: Index("Streams_by_channelRef"), actions: {read:true}}
+    {resource: Collection("StreamMetrics"), actions: {read: true}},
+    {resource: Index("StreamMetrics_by_channelRef"), actions: {read: true}},
   ]
 })

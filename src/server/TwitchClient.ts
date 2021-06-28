@@ -1,17 +1,13 @@
 import { ApiClient, HelixEventSubTransportOptions } from 'twitch';
 import { BasicPubSubClient } from 'twitch-pubsub-client';
-import DBClient from './DBClient';
+import DBClient from '../common/DBClient';
 import TwitchAuthProvider from './TwitchAuthProvider';
+import { StreamMetric, StreamMetricType } from "../common/types";
 
 type PubSubViewerCountMessageData = {
   type: 'viewcount' | 'commercial';
   server_time: number;
   viewers: number;
-};
-
-type StreamMetric = {
-  value: number;
-  timestamp: number;
 };
 
 type StreamMetricUpdateByChannel = { [channelId: string] : StreamMetric };
@@ -57,7 +53,8 @@ export default class TwitchClient {
   }
 
   static getSecondsBeforeNextViewerCountUpdate(): number {
-    const sec = new Date().getSeconds();
+    const now = new Date();
+    const sec = now.getSeconds() + (now.getMilliseconds()/1000);
     if (sec >= 30) {
       return 60 - sec;
     }
@@ -80,6 +77,8 @@ export default class TwitchClient {
         const channelId: string = topic.split('.')[1];
         if (data.type === 'viewcount') {
           output[channelId] = {
+            channelId,
+            type: StreamMetricType.ViewerCount,
             value: data.viewers,
             timestamp: data.server_time * 1000,
           };

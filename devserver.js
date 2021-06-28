@@ -11,7 +11,7 @@ process.env.LOCAL = 'true';
 
 
 let clientBundling = false;
-const clientWatcher = chokidar.watch('./src/client').on('all', async () => {
+const clientWatcher = chokidar.watch('./src').on('all', async () => {
   if (clientBundling) { return; }
   clientBundling = true;
   exec('npm run bundle:dev').then(() => {
@@ -27,9 +27,9 @@ const restartServer = () => {
   if (server) {
     server.close();
   }
-  const SchedulerClient = require('./build/server/SchedulerClient').default;
-  const ScheduledTaskHandler = require('./build/server/ScheduledTaskHandler').default;
-  SchedulerClient.localHandler = (task)=> ScheduledTaskHandler([task]);
+  const Scheduler = require('./build/server/Scheduler').default;
+  const ScheduledTaskHandler = require('./build/server/handlers/scheduledTaskHandler').default;
+  Scheduler.localHandler = (task)=> ScheduledTaskHandler([task]);
   const service = require('./build/server/ExpressApp').default;
   server = service.listen(8080);
   server.on('error', (err)=> console.error(err));
