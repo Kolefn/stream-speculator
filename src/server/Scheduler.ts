@@ -27,7 +27,8 @@ const getDelaySeconds = (task: ScheduledTask) : number => {
     if(!Number.isNaN(task.when?.at?.second)){
       const sec = now.getSeconds() + (now.getMilliseconds() / 1000);
       const until = task.when.at.second - sec;
-      return Math.floor(until < 0 ? until + 60 : until);
+      const delay = Math.floor(until < 0 ? until + 60 : until);
+      return (task.isRepeat && delay === 0) ? 60 : delay;
     }
   }
 
@@ -86,6 +87,7 @@ export default class Scheduler {
             if(!map[task.type]){
               map[task.type] = createScheduledTaskQuery(task);
             }
+            return map;
           }, {})
         )
       );
@@ -98,7 +100,7 @@ export default class Scheduler {
     }
 
     if(process.env.LOCAL){
-      tasks.map((task)=> setTimeout(()=> Scheduler.localHandler(task), getDelaySeconds(task) * 1000));
+      tasks.map((task)=> setTimeout(()=> Scheduler.localHandler(task),  getDelaySeconds(task) * 1000));
     }else{
       await this.client.sendMessageBatch({
         QueueUrl: process.env.SQS_QUEUE_URL as string,

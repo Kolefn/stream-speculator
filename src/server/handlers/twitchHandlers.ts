@@ -11,11 +11,13 @@ const scheduler = new Scheduler();
 export const getTwitchChannelPageData = async (userName: string) : Promise<TwitchChannelPageData> => {
     userName = userName.toLowerCase();
     try {
-        return DB.deRef<TwitchChannelPageData>(
-            await dbClient.exec(
-                DB.get(DB.channels.with('userName', userName))
-            ),
-        );
+        return { 
+            channel: DB.deRef<TwitchChannel>(
+                await dbClient.exec(
+                    DB.get(DB.channels.with('userName', userName))
+                ),
+            )
+        };
     } catch {
         const stream = await twitch.api.helix.streams.getStreamByUserName(userName);
         if(!stream){
@@ -42,6 +44,6 @@ export const getTwitchChannelPageData = async (userName: string) : Promise<Twitc
             });
         }
           
-        return DB.deRef<TwitchChannelPageData>(result.doc);
+        return { channel: DB.deRef<TwitchChannel>(result.doc) };
     }
 };

@@ -144,7 +144,7 @@ export default class DBClient {
         const collectionSingular = k.split("Id")[0];
         let collectionPlural = `${collectionSingular}s`;
         collectionPlural = collectionPlural.charAt(0).toUpperCase() + collectionPlural.slice(1);
-        docData[`${collectionSingular}Ref`] = q.Ref(q.Collection(collectionPlural, data[k]));
+        docData[`${collectionSingular}Ref`] = q.Ref(q.Collection(collectionPlural), data[k]);
       }else{
         docData[k] = data[k];
       }

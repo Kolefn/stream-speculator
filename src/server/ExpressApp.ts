@@ -1,4 +1,4 @@
-import express, { Response } from 'express';
+import express, { Request, Response } from 'express';
 import path from 'path';
 import cookieParser from "cookie-parser";
 import APIResponse, { APIResponseStatus } from './APIResponse';
@@ -14,6 +14,7 @@ const expressify = async <T>(responder: () => Promise<{} | APIResponse<T>>, res:
       APIResponse.send({ data: response }, res);
     }
   }catch(e){
+    console.error(e);
     APIResponse.send({ status: APIResponseStatus.ServerError }, res);
   }
 };
@@ -22,13 +23,20 @@ const ExpressApp = express();
 
 ExpressApp.use(cookieParser(process.env.COOKIE_SIGNING_KEY as string));
 
+const getSession = (req: Request) : any => {
+  try {
+    return JSON.parse(req.signedCookies["session"]);
+  }catch(e){
+    return null;
+  }
+};
+
 ExpressApp.get('/api/auth/dbToken', async (req, res)=> {
-  const session = req.signedCookies["session"];
-  expressify(()=> getDBToken(session), res);
+  expressify(()=> getDBToken(getSession(req)), res);
 });
 
 ExpressApp.post('/api/auth/loginAsGuest', async (req, res)=> {
-  expressify(()=> loginAsGuest(req.signedCookies["session"]), res);
+  expressify(()=> loginAsGuest(getSession(req)), res);
 });
 
 ExpressApp.get('/api/twitch/:channelName', async (req, res) => {

@@ -6,10 +6,10 @@ CreateCollection({name: "ScheduledTasks"})
 CreateCollection({name: "Users" })
 
 CreateIndex({
-  name: "Channels_by_login",
+  name: "Channels_by_userName",
   source: Collection("Channels"),
   terms: [
-    { field: ["data", "login"]}
+    { field: ["data", "userName"]}
   ]
 })
 

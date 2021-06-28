@@ -33,7 +33,9 @@ export default class APIResponse<T extends {}> {
     send(res: Response) : Response {
         res.status(this.options.status);
         if(this.options.cookies.length > 0){
-            res.setHeader("Set-Cookie", this.options.cookies.map((c)=> c.serialize()));
+            this.options.cookies.forEach((c)=> {
+                c.addTo(res);
+            });
         }
         res.json(this.options.data ?? {});
         return res;

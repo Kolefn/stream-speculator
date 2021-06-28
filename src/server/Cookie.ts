@@ -1,5 +1,4 @@
-import cookie from "cookie";
-import signer from "cookie-signature";
+import { Response } from "express";
 
 export default class Cookie {
     name: string;
@@ -11,14 +10,14 @@ export default class Cookie {
         this.ttlMs = ttlMs;
     }
     
-    serialize(){
-        return cookie.serialize(this.name, 
-            signer.sign(JSON.stringify(this.data), process.env.COOKIE_SIGNING_KEY as string), { 
-            httpOnly: true, 
+    addTo(res: Response){
+        res.cookie(this.name, JSON.stringify(this.data), {
+            httpOnly: true,
             expires: new Date(Date.now() + this.ttlMs),
             secure: Boolean(!process.env.LOCAL),
             sameSite: 'lax',
-            domain: process.env.LOCAL ? undefined : process.env.DOMAIN_NAME
+            domain: process.env.LOCAL ? undefined : process.env.DOMAIN_NAME,
+            signed: true,
         });
     }
 }
