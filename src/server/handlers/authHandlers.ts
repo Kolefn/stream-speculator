@@ -1,11 +1,11 @@
 import { DBToken, LoginAsGuestResponse } from "../../common/types";
 import APIResponse from "../APIResponse";
 import Cookie from "../Cookie";
-import { default as DB, FaunaTokenDoc, FaunaDoc } from "../DBClient";
+import { default as DB, FaunaTokenDoc, FaunaDoc } from "../../common/DBClient";
 import RedundantRequestError from "../errors/RedundantRequestError";
 import UnAuthorizedError from "../errors/UnAuthorizedError";
 
-const db = new DB();
+const db = new DB(process.env.FAUNADB_SECRET as string);
 
 const GUEST_TTL_DAYS = 7;
 const GUEST_TTL_MS = GUEST_TTL_DAYS * 86400 * 1000; 

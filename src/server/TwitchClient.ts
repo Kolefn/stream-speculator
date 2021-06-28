@@ -1,6 +1,6 @@
 import { ApiClient, HelixEventSubTransportOptions } from 'twitch';
 import { BasicPubSubClient } from 'twitch-pubsub-client';
-import DBClient from './DBClient';
+import DBClient from '../common/DBClient';
 import TwitchAuthProvider from './TwitchAuthProvider';
 import { StreamMetric, StreamMetricType } from "../common/types";
 

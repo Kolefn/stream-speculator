@@ -1,8 +1,8 @@
 // eslint-disable-next-line import/no-extraneous-dependencies
 import SQSClient from 'aws-sdk/clients/sqs';
-import {default as DB, FaunaDocCreate } from './DBClient';
+import {default as DB, FaunaDocCreate } from '../common/DBClient';
 
-const db = new DB();
+const db = new DB(process.env.FAUNADB_SECRET as string);
 
 export enum TaskType {
   MonitorChannel = 0,

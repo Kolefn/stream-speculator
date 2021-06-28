@@ -14,6 +14,7 @@ export type LoginAsGuestResponse = {
 export type TwitchStream = {
   id: string;
   startedAt: UnixEpochTime;
+  viewerCount: number;
 };
 
 export type TwitchChannel = {

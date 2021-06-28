@@ -1,10 +1,10 @@
 import { TwitchChannelPageData, TwitchChannel } from "../../common/types";
-import { default as DB, FaunaDocCreate } from "../DBClient";
+import { default as DB, FaunaDocCreate } from "../../common/DBClient";
 import NotFoundError from "../errors/NotFoundError";
 import Scheduler, { TaskType } from "../Scheduler";
 import TwitchClient from "../TwitchClient";
 
-const dbClient = new DB();
+const dbClient = new DB(process.env.FAUNADB_SECRET as string);
 const twitch = new TwitchClient(dbClient);
 const scheduler = new Scheduler();
 
@@ -29,7 +29,8 @@ export const getTwitchChannelPageData = async (userName: string) : Promise<Twitc
                 userName: stream.userName,
                 stream: { 
                     id: stream.id,
-                    startedAt: stream.startDate.getTime() 
+                    startedAt: stream.startDate.getTime(),
+                    viewerCount: stream.viewers,
                 }
             })
         );

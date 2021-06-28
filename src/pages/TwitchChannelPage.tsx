@@ -1,36 +1,28 @@
 import React, { useCallback, useEffect } from 'react';
-import useDBToken from '../hooks/useDBToken';
 import usePageTitle from '../hooks/usePageTitle';
 import usePathnamePage from '../hooks/usePathnamePage';
-import faunadb from "faunadb";
 import useRequest from '../hooks/useRequest';
 import { getTwitchChannelPageData } from '../api/endpoints';
+import useDBClient from '../hooks/useDBClient';
+import { default as DB } from "../common/DBClient";
 
-const q = faunadb.query;
 
 const TwitchChannelPage = () => {
   const channelName = usePathnamePage();
   usePageTitle(`${channelName} - Twitch`);
-  const [dbToken] = useDBToken();
+  const [client] = useDBClient();
   const [pageData] = useRequest(
     useCallback(()=> getTwitchChannelPageData(channelName as string), [channelName])
   );
   useEffect(()=> {
-    if(pageData?.stream && dbToken){
-      const dbClient = new faunadb.Client({ secret: dbToken.secret });
-      const dbStream = dbClient.stream.document(q.Ref(q.Collection("Streams"), pageData.stream.id));
-      dbStream.on('snapshot', (snapshot)=> {
-        console.log(snapshot);
-      }).on('version', (version)=> {
-        console.log(version);
+    if(pageData?.channel.stream && client){
+      const unsub = client.onChange(DB.channels.doc(pageData.channel.id), (latest)=> {
+        console.log(latest);
       });
-
-      dbStream.start();
-
-      return ()=> dbStream.close();
+      return () => unsub();
     }
     return;
-  }, [dbToken, pageData]);
+  }, [client, pageData]);
   return (<h1>{channelName}</h1>);
 };
 

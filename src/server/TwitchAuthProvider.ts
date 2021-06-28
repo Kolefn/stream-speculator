@@ -1,5 +1,5 @@
 import { AccessToken, ClientCredentialsAuthProvider, revokeToken } from 'twitch-auth';
-import { default as DB, FaunaDoc } from './DBClient';
+import { default as DB, FaunaDoc } from '../common/DBClient';
 
 type AccessTokenDocData = {
   accessToken: string;

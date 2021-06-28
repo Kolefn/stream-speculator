@@ -17,8 +17,11 @@ class DBCollection{
     return q.Match(q.Index(`${this.name}_by_${field}`), value);
   }
 
-  by(collection: DBCollection, docVarKey: string) : faunadb.Expr {
-    return q.Match(q.Index(`${this.name}_by_${collection.name}`), q.Select(["ref"], q.Var(docVarKey)));
+  withRefTo(collection: DBCollection, id: string) : faunadb.Expr {
+    let field = collection.name.toLowerCase();
+    field = field.substring(0, field.length-1);
+    field = `${field}Ref`;
+    return this.with(field, id);
   }
 
   fieldExists(field: string) : faunadb.Expr {
@@ -63,7 +66,11 @@ export type FaunaTokenDoc = {
   instance: FaunaRef;
   ts: number;
   secret: string;
-}
+};
+
+export type FaunaStreamData = {
+  document: FaunaDoc;
+};
 
 export default class DBClient {
   static readonly channels: DBCollection = new DBCollection("Channels");
@@ -74,8 +81,8 @@ export default class DBClient {
 
   private client: faunadb.Client;
 
-  constructor() {
-    this.client = new faunadb.Client({ secret: process.env.FAUNADB_SECRET as string });
+  constructor(secret: string) {
+    this.client = new faunadb.Client({ secret });
   }
 
   static collection(name: string) : DBCollection{
@@ -184,10 +191,23 @@ export default class DBClient {
   static delete(ref: faunadb.Expr) : faunadb.Expr {
     return q.Delete(ref);
   }
+  
+  static update(ref: faunadb.Expr, data: any) : faunadb.Expr {
+    return q.Update(ref, { data });
+  }
 
   async exec<T>(expr: faunadb.Expr) : Promise<T>{
     return await this.client.query(expr);
   }
+
+  onChange(ref: faunadb.Expr, handler: (data: FaunaStreamData)=> void) : Function {
+    const stream = this.client.stream.document(ref);
+    stream.on('version', (data)=> {
+        handler(data as FaunaStreamData);
+    });
+    stream.start();
+    return () => stream.close();
+  };
 
 
   async forEachPage<T>(set: faunadb.Expr, callback: (page: FaunaPage<T>) => Promise<void>, options?: { size?: number }) : Promise<void> {
