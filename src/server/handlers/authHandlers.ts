@@ -18,7 +18,7 @@ export type AuthSession = {
 
 export const getDBToken = async (session: AuthSession | null) : Promise<DBToken> => {
     if(session){
-      const { secret } = await db.exec<FaunaTokenDoc>(DB.token(DB.users.doc(session.userId), DB.ttl(DB_TOKEN_TTL_SEC, 'seconds')));
+      const { secret } = await db.exec<FaunaTokenDoc>(DB.token(DB.users.doc(session.userId), DB.fromNow(DB_TOKEN_TTL_SEC, 'seconds')));
       return { secret, expiresAt: Date.now() + DB_TOKEN_TTL_SEC * 1000 };
     }else{
         throw new UnAuthorizedError("GetDBToken");
@@ -31,8 +31,8 @@ export const loginAsGuest = async (session: AuthSession | null) : Promise<APIRes
     }else {
     const { user, token } = await db.exec<{ user: FaunaDoc, token: FaunaTokenDoc }>(
         DB.named({
-            user: DB.create(DB.users, { isGuest: true }, DB.ttl(GUEST_TTL_DAYS, 'days')),
-            token: DB.token(DB.varToRef("user"), DB.ttl(DB_TOKEN_TTL_SEC, 'seconds'))
+            user: DB.create(DB.users, { isGuest: true }, DB.fromNow(GUEST_TTL_DAYS, 'days')),
+            token: DB.token(DB.varToRef("user"), DB.fromNow(DB_TOKEN_TTL_SEC, 'seconds'))
         })
     );
     const userId = user.ref.id;

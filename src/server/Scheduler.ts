@@ -52,6 +52,10 @@ export default class Scheduler {
     });
   }
 
+  async end(task: ScheduledTask) : Promise<void> {
+    await db.exec(DB.delete(DB.scheduledTasks.doc(task.type.toString())));
+  }
+
   async schedule(task: ScheduledTask) : Promise<boolean> {
     if(isInitial(task)){
       const result = await db.exec<FaunaDocCreate>(createScheduledTaskQuery(task));

@@ -1,7 +1,7 @@
 import { TwitchChannelPageData, TwitchChannel } from "../../common/types";
 import { default as DB, FaunaDocCreate } from "../DBClient";
 import NotFoundError from "../errors/NotFoundError";
-import Scheduler from "../Scheduler";
+import Scheduler, { TaskType } from "../Scheduler";
 import TwitchClient from "../TwitchClient";
 
 const dbClient = new DB();
@@ -36,7 +36,7 @@ export const getTwitchChannelPageData = async (userName: string) : Promise<Twitc
         
         if (result.created) {
             await scheduler.schedule({
-                name: 'monitorChannel',
+                type: TaskType.MonitorChannel,
                 data: { channelId: stream.userId },
             });
         }

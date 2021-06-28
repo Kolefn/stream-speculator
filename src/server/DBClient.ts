@@ -22,7 +22,19 @@ class DBCollection{
   }
 
   fieldExists(field: string) : faunadb.Expr {
-    return q.Filter(q.Documents(this.ref()), q.Lambda("ref", q.IsNull(q.Select(["data", field], q.Get(q.Var("ref"))))));
+    return q.Filter(q.Documents(this.ref()), q.Lambda("ref", q.Not(q.IsNull(q.Select(["data", field], q.Get(q.Var("ref")))))));
+  }
+
+  expireAfter(time: faunadb.Expr) : faunadb.Expr {
+    return q.Filter(
+      q.Documents(this.ref()), 
+      q.Lambda("ref", 
+        q.GT(
+          q.Select(["ttl"], q.Get(q.Var("ref"))),
+          time
+        )
+      )
+    );
   }
 
 }
@@ -33,6 +45,7 @@ export type FaunaRef = { id: string; };
 export type FaunaDoc = {
   ref: FaunaRef;
   data: any;
+  ttl?: number;
 };
 
 export type FaunaPage<T> = {
@@ -139,8 +152,12 @@ export default class DBClient {
       }, {});
   }
 
-  static ttl(offset: number, unit: 'days' | 'seconds') : faunadb.Expr {
+  static fromNow(offset: number, unit: 'days' | 'seconds') : faunadb.Expr {
     return q.TimeAdd(q.Now(), offset, unit);
+  }
+
+  static fromDate(date: Date) : faunadb.Expr {
+    return q.Time(date.toISOString());
   }
 
   static create<T extends { [key: string] : any }>(collection: DBCollection, data: T, ttl?: faunadb.Expr) : faunadb.Expr {
@@ -164,6 +181,10 @@ export default class DBClient {
     return q.Select(["ref"], q.Var(varName));
   }
 
+  static delete(ref: faunadb.Expr) : faunadb.Expr {
+    return q.Delete(ref);
+  }
+
   async exec<T>(expr: faunadb.Expr) : Promise<T>{
     return await this.client.query(expr);
   }
@@ -176,36 +197,4 @@ export default class DBClient {
       await callback(page);
     }while(page.after && page.data.length > 0);
   }
-
-
-  // async storeTwitchClientAccessToken(token: AccessToken) : Promise<any> {
-  //   const expiryDate = q.Time(token.expiryDate?.toISOString() as string);
-  //   return this.client.query(q.Create(q.Collection('TwitchClientAccessTokens'), {
-  //     ttl: expiryDate,
-  //     data: {
-  //       accessToken: token.accessToken,
-  //       refreshToken: token.refreshToken,
-  //       expiryTime: expiryDate,
-  //       scope: token.scope,
-  //     },
-  //   }));
-  // }
-
-  // async getTwitchClientAccessToken(minMillisBeforeExpire: number = 120000) : Promise<AccessToken> {
-  //   const result: any = await this.client.query(q.Select(['data'],
-  //     q.Get(q.Filter(
-  //       q.Documents(q.Collection('TwitchClientAccessTokens')),
-  //       q.Lambda('documentRef', q.GTE(
-  //         q.ToTime(q.Select(['data', 'expiryTime'], q.Get(q.Var('documentRef')))),
-  //         q.Time(new Date(Date.now() + minMillisBeforeExpire).toISOString()),
-  //       )),
-  //     ))));
-
-  //   return new AccessToken({
-  //     access_token: result.accessToken,
-  //     refresh_token: result.refreshToken,
-  //     expires_in: (new Date(result.expiryTime).getTime() - Date.now()) / 1000,
-  //     scope: result.scope,
-  //   });
-  // }
 }

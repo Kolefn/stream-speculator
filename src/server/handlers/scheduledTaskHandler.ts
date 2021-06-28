@@ -34,7 +34,6 @@ export default (event: any) => {
           ]);
         break;
         case TaskType.MonitorStreams:
-          await scheduler.schedule({...task, isRepeat: true });
           const nextTasks: ScheduledTask[] = [];
           await db.forEachPage<FaunaRef>(DB.channels.fieldExists("stream"), async (page)=> {
             nextTasks.push({
@@ -42,8 +41,12 @@ export default (event: any) => {
               data: page.data.map((ref)=> ref.id),
             })
           }, { size: 500 });
-
-          await scheduler.scheduleBatch(nextTasks);
+          if(nextTasks.length > 0){
+            nextTasks.push({...task, isRepeat: true });
+            await scheduler.scheduleBatch(nextTasks);
+          }else{
+            await scheduler.end(task);
+          }
           break;
         case TaskType.GetRealTimeStreamMetrics:
           const updates = await twitch.getStreamViewerCounts(task.data);
