@@ -12,6 +12,7 @@ export type APIResponseOptions<T extends {}> = {
     status: APIResponseStatus;
     data?: T;
     cookies: Cookie[];
+    contentType?: string;
 };
 
 export default class APIResponse<T extends {}> {
@@ -26,18 +27,24 @@ export default class APIResponse<T extends {}> {
         this.options = {
             status: APIResponseStatus.Ok,
             cookies: [],
+            contentType: 'applicaiton/json',
             ...(options ?? {})
         };
     }
 
     send(res: Response) : Response {
         res.status(this.options.status);
+        res.contentType(this.options.contentType as string);
         if(this.options.cookies.length > 0){
             this.options.cookies.forEach((c)=> {
                 c.addTo(res);
             });
         }
-        res.json(this.options.data ?? {});
+        if(this.options.contentType === 'applicaiton/json'){
+            res.json(this.options.data ?? {});
+        }else{
+            res.send(this.options.data);
+        }
         return res;
     }
 }

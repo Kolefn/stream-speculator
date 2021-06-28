@@ -3,10 +3,38 @@ import { default as DB, FaunaDocCreate } from "../../common/DBClient";
 import NotFoundError from "../errors/NotFoundError";
 import Scheduler, { TaskType } from "../Scheduler";
 import TwitchClient from "../TwitchClient";
+import APIResponse from "../APIResponse";
+import { IncomingHttpHeaders } from "http";
+import crypto from "crypto";
+import { HelixEventSubSubscriptionStatus, HelixEventSubTransportData } from "twitch/lib";
 
 const dbClient = new DB(process.env.FAUNADB_SECRET as string);
 const twitch = new TwitchClient(dbClient);
 const scheduler = new Scheduler();
+
+interface EventSubSubscriptionBody {
+	id: string;
+	status: HelixEventSubSubscriptionStatus;
+	type: string;
+	version: string;
+	condition: Record<string, string>;
+	transport: HelixEventSubTransportData;
+	created_at: string;
+}
+
+/** @private */
+interface BaseEventSubBody {
+	subscription: EventSubSubscriptionBody;
+}
+
+/** @private */
+interface EventSubVerificationBody extends BaseEventSubBody {
+	challenge: string;
+}
+
+interface EventSubNotificationBody extends BaseEventSubBody {
+	event: { [key: string] : any };
+}
 
 export const getTwitchChannelPageData = async (userName: string) : Promise<TwitchChannelPageData> => {
     userName = userName.toLowerCase();
@@ -46,4 +74,44 @@ export const getTwitchChannelPageData = async (userName: string) : Promise<Twitc
           
         return { channel: DB.deRef<TwitchChannel>(result.doc) };
     }
+};
+
+export const handleTwitchWebhook = async (headers: IncomingHttpHeaders, rawBody: string) : Promise<APIResponse> => {
+    const messageId = headers['twitch-eventsub-message-id'] as string;
+    const timestamp = headers['twitch-eventsub-message-timestamp'] as string;
+    const algoSig = headers['twitch-eventsub-message-signature'] as string;
+    const type = headers['twitch-eventsub-message-type'] as string;
+
+    if(!type || !algoSig || !messageId || !timestamp){
+        return new APIResponse({ status: 400 });
+    }
+
+    const [algorithm, signature] = algoSig.split('=', 2);
+
+    if(crypto
+			.createHmac(algorithm, process.env.TWITCH_WEBHOOK_SECRET as string)
+			.update(messageId + timestamp + rawBody)
+			.digest('hex') !== signature){
+        
+        return new APIResponse({ status: 401 });
+    }
+
+    const body = JSON.parse(rawBody);
+
+    if(type === 'webhook_callback_verification'){
+        const verificationBody = body as EventSubVerificationBody;
+        return new APIResponse({
+            status: 200,
+            data: verificationBody.challenge,
+            contentType: 'plain/text',
+        })
+    }else if (type === 'notification'){
+        const notificationBody = body as EventSubNotificationBody;
+        return new APIResponse({
+            status: 200,
+        });
+    }
+
+    return new APIResponse({ status: 400 });
+
 };

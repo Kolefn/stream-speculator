@@ -3,7 +3,7 @@ import path from 'path';
 import cookieParser from "cookie-parser";
 import APIResponse, { APIResponseStatus } from './APIResponse';
 import { getDBToken, loginAsGuest } from './handlers/authHandlers';
-import { getTwitchChannelPageData } from './handlers/twitchHandlers';
+import { getTwitchChannelPageData, handleTwitchWebhook } from './handlers/twitchHandlers';
 
 const expressify = async <T>(responder: () => Promise<{} | APIResponse<T>>, res: Response) => {
   try {
@@ -41,6 +41,10 @@ ExpressApp.post('/api/auth/loginAsGuest', async (req, res)=> {
 
 ExpressApp.get('/api/twitch/:channelName', async (req, res) => {
   expressify(()=> getTwitchChannelPageData(req.params.channelName), res);
+});
+
+ExpressApp.post('/api/twitch/webhook', (req, res)=> {
+  expressify(()=> handleTwitchWebhook(req.headers, req.body), res);
 });
 
 ExpressApp.use(express.static(process.env.PUBLIC_FOLDER_PATH as string));

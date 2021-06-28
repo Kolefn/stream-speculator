@@ -1,10 +1,11 @@
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import usePageTitle from '../hooks/usePageTitle';
 import usePathnamePage from '../hooks/usePathnamePage';
 import useRequest from '../hooks/useRequest';
 import { getTwitchChannelPageData } from '../api/endpoints';
 import useDBClient from '../hooks/useDBClient';
 import { default as DB } from "../common/DBClient";
+import { TwitchChannelPageData } from '../common/types';
 
 
 const TwitchChannelPage = () => {
@@ -14,16 +15,21 @@ const TwitchChannelPage = () => {
   const [pageData] = useRequest(
     useCallback(()=> getTwitchChannelPageData(channelName as string), [channelName])
   );
+  const [viewerCount,setViewerCount] = useState(0);
   useEffect(()=> {
     if(pageData?.channel.stream && client){
+      setViewerCount(pageData.channel.stream.viewerCount);
       const unsub = client.onChange(DB.channels.doc(pageData.channel.id), (latest)=> {
-        console.log(latest);
+        const data = (latest.document.data as TwitchChannelPageData);
+        if(data.channel.stream?.viewerCount){
+          setViewerCount(data.channel.stream?.viewerCount);
+        }
       });
       return () => unsub();
     }
     return;
   }, [client, pageData]);
-  return (<h1>{channelName}</h1>);
+  return (<div><h1>{channelName}</h1><h3>Viewers: {viewerCount}</h3></div>);
 };
 
 export default TwitchChannelPage;
