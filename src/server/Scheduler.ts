@@ -21,6 +21,17 @@ export type ScheduledTask = {
   isRepeat?: boolean,
 };
 
+export const StreamMonitoringTasks = [
+  {
+    type: TaskType.MonitorStreams,
+    when: { at: { second: 25 }}
+  },
+  {
+    type: TaskType.MonitorStreams,
+    when: { at: { second: 55 }}
+  }
+];
+
 const getDelaySeconds = (task: ScheduledTask) : number => {
   if(task.when?.at){
     const now = new Date();

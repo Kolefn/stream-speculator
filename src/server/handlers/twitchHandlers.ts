@@ -1,7 +1,7 @@
 import { TwitchChannelPageData, TwitchChannel } from "../../common/types";
 import { default as DB, FaunaDocCreate } from "../../common/DBClient";
 import NotFoundError from "../errors/NotFoundError";
-import Scheduler, { TaskType } from "../Scheduler";
+import Scheduler, { StreamMonitoringTasks, TaskType } from "../Scheduler";
 import TwitchClient from "../TwitchClient";
 import APIResponse from "../APIResponse";
 import { IncomingHttpHeaders } from "http";
@@ -22,12 +22,10 @@ interface EventSubSubscriptionBody {
 	created_at: string;
 }
 
-/** @private */
 interface BaseEventSubBody {
 	subscription: EventSubSubscriptionBody;
 }
 
-/** @private */
 interface EventSubVerificationBody extends BaseEventSubBody {
 	challenge: string;
 }
@@ -121,6 +119,7 @@ export const handleTwitchWebhook = async (headers: IncomingHttpHeaders, rawBody:
         if(eventType === 'stream.online'){
             const update = { isLive: true, stream: { id: event.id, startedAt: new Date(event.started_at).getTime(), viewerCount: 0 }};
             await dbClient.exec(DB.update(DB.channels.doc(channelId),  update));
+            await scheduler.scheduleBatch(StreamMonitoringTasks);
         }else if(eventType === 'stream.offline'){
             await dbClient.exec(DB.update(DB.channels.doc(channelId), { isLive: false }));
         }

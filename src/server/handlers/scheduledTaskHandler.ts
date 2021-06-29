@@ -1,11 +1,10 @@
 import { default as DB, FaunaRef } from '../../common/DBClient';
-import Scheduler, { ScheduledTask, TaskType } from '../Scheduler';
+import Scheduler, { ScheduledTask, StreamMonitoringTasks, TaskType } from '../Scheduler';
 import TwitchClient from '../TwitchClient';
 
 const db = new DB(process.env.FAUNADB_SECRET as string);
 const twitch = new TwitchClient(db);
 const scheduler = new Scheduler();
-const MONITOR_STREAMS_HEAD_START_SEC = 5;
 
 export default (event: any) => {
   let tasks = [];
@@ -21,16 +20,7 @@ export default (event: any) => {
           if(!process.env.LOCAL){
             //await twitch.subToChannelEvents(task.data.channelId);
           }
-          await scheduler.scheduleBatch([
-            {
-              type: TaskType.MonitorStreams,
-              when: { at: { second: 30 - MONITOR_STREAMS_HEAD_START_SEC }}
-            },
-            {
-              type: TaskType.MonitorStreams,
-              when: { at: { second: 60 - MONITOR_STREAMS_HEAD_START_SEC }}
-            }
-          ]);
+          await scheduler.scheduleBatch(StreamMonitoringTasks);
         break;
         case TaskType.MonitorStreams:
           const nextTasks: ScheduledTask[] = [];
