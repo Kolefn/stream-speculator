@@ -1,4 +1,3 @@
-import { StreamMetric } from '../../common/types';
 import { default as DB, FaunaRef } from '../../common/DBClient';
 import Scheduler, { ScheduledTask, TaskType } from '../Scheduler';
 import TwitchClient from '../TwitchClient';
@@ -20,7 +19,7 @@ export default (event: any) => {
       switch(task.type){
         case TaskType.MonitorChannel:
           if(!process.env.LOCAL){
-            await twitch.subToChannelEvents(task.data.channelId);
+            //await twitch.subToChannelEvents(task.data.channelId);
           }
           await scheduler.scheduleBatch([
             {
@@ -35,11 +34,13 @@ export default (event: any) => {
         break;
         case TaskType.MonitorStreams:
           const nextTasks: ScheduledTask[] = [];
-          await db.forEachPage<FaunaRef>(DB.channels.fieldExists("stream"), async (page)=> {
-            nextTasks.push({
-              type: TaskType.GetRealTimeStreamMetrics,
-              data: page.data.map((ref)=> ref.id),
-            })
+          await db.forEachPage<FaunaRef>(DB.channels.with("isLive", true), async (page)=> {
+            if(page.data.length > 0){
+              nextTasks.push({
+                type: TaskType.GetRealTimeStreamMetrics,
+                data: page.data.map((ref)=> ref.id),
+              });
+            }
           }, { size: 500 });
           if(nextTasks.length > 0){
             nextTasks.push({...task, isRepeat: true });
@@ -52,10 +53,11 @@ export default (event: any) => {
           const updates = await twitch.getStreamViewerCounts(task.data);
           await db.exec(DB.batch(...Object.keys(updates).map((channelId)=> {
             const update = updates[channelId];
-            return DB.batch(
-              DB.create<StreamMetric>(DB.streamMetrics, update),
-              DB.update(DB.channels.doc(channelId), { stream: { viewerCount: update.value } })
-            );
+            return DB.update(DB.channels.doc(channelId), { stream: { viewerCount: update.value } });
+            // return DB.batch(
+            //   DB.create<StreamMetric>(DB.streamMetrics, update),
+            //   DB.update(DB.channels.doc(channelId), { stream: { viewerCount: update.value } })
+            // );
           })));
           break;
       }

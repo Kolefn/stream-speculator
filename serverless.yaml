@@ -34,6 +34,13 @@ provider:
     TWITCH_WEBHOOK_CALLBACK: ${env:TWITCH_WEBHOOK_CALLBACK}
     FAUNADB_SECRET: ${env:FAUNADB_SECRET}
     COOKIE_SIGNING_KEY: ${env:COOKIE_SIGNING_KEY}
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - sqs:SendMessage
+        - sqs:SendMessageBatch
+      Resource:
+        - !GetAtt TaskQueue.Arn
   
 package:
   patterns:
@@ -50,11 +57,15 @@ functions:
       - httpApi: '*'
   taskHandler:
     handler: build/server/handlers/scheduledTaskHandler.default
+    timeout: 15
     events:
-      - sqs: !GetAtt TaskQueue.Arn
+      - sqs:
+          arn: !GetAtt TaskQueue.Arn
           
 resources:
   Resources:
     TaskQueue:
       Type: AWS::SQS::Queue
+      Properties:
+        QueueName: ${self:service}-task-queue
   

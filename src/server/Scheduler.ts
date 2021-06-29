@@ -54,7 +54,7 @@ export default class Scheduler {
   }
 
   async end(task: ScheduledTask) : Promise<void> {
-    await db.exec(DB.delete(DB.scheduledTasks.doc(task.type.toString())));
+    await db.exec(DB.deleteExists(DB.scheduledTasks.doc(task.type.toString())));
   }
 
   async schedule(task: ScheduledTask) : Promise<boolean> {
@@ -73,7 +73,7 @@ export default class Scheduler {
         QueueUrl: process.env.SQS_QUEUE_URL as string,
         MessageBody: JSON.stringify(task),
         DelaySeconds: getDelaySeconds(task),
-      });
+      }).promise();
       return true;
     }
   }
@@ -109,7 +109,7 @@ export default class Scheduler {
           MessageBody: JSON.stringify(task),
           DelaySeconds: getDelaySeconds(task),
         })),
-      });
+      }).promise();
     }
   }
 }

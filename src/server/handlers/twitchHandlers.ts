@@ -57,6 +57,7 @@ export const getTwitchChannelPageData = async (userName: string) : Promise<Twitc
                 id: stream.userId,
                 displayName: stream.userDisplayName, 
                 userName: stream.userName,
+                isLive: true,
                 stream: { 
                     id: stream.id,
                     startedAt: stream.startDate.getTime(),
@@ -76,7 +77,7 @@ export const getTwitchChannelPageData = async (userName: string) : Promise<Twitc
     }
 };
 
-export const handleTwitchWebhook = async (headers: IncomingHttpHeaders, rawBody: string) : Promise<APIResponse> => {
+export const handleTwitchWebhook = async (headers: IncomingHttpHeaders, rawBody: string) : Promise<APIResponse<any>> => {
     const messageId = headers['twitch-eventsub-message-id'] as string;
     const timestamp = headers['twitch-eventsub-message-timestamp'] as string;
     const algoSig = headers['twitch-eventsub-message-signature'] as string;
@@ -100,18 +101,34 @@ export const handleTwitchWebhook = async (headers: IncomingHttpHeaders, rawBody:
 
     if(type === 'webhook_callback_verification'){
         const verificationBody = body as EventSubVerificationBody;
+        await dbClient.exec(DB.create(DB.webhookSubs, 
+            { 
+                id: verificationBody.subscription.id, 
+                type: verificationBody.subscription.type, 
+                channelId: verificationBody.subscription.condition.broadcaster_user_id 
+            }
+        ));
         return new APIResponse({
             status: 200,
             data: verificationBody.challenge,
             contentType: 'plain/text',
-        })
+        });
     }else if (type === 'notification'){
         const notificationBody = body as EventSubNotificationBody;
+        const event = notificationBody.event;
+        const eventType = notificationBody.subscription.type;
+        const channelId = event.broadcaster_user_id;
+        if(eventType === 'stream.online'){
+            const update = { isLive: true, stream: { id: event.id, startedAt: new Date(event.started_at).getTime(), viewerCount: 0 }};
+            await dbClient.exec(DB.update(DB.channels.doc(channelId),  update));
+        }else if(eventType === 'stream.offline'){
+            await dbClient.exec(DB.update(DB.channels.doc(channelId), { isLive: false }));
+        }
         return new APIResponse({
             status: 200,
         });
     }
 
-    return new APIResponse({ status: 400 });
+    return new APIResponse({ status: 200 });
 
 };

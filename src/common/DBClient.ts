@@ -78,7 +78,8 @@ export default class DBClient {
   static readonly scheduledTasks: DBCollection = new DBCollection("ScheduledTasks");
   static readonly accessTokens: DBCollection = new DBCollection("TwitchClientAccessTokens");
   static readonly streamMetrics: DBCollection = new DBCollection("StreamMetrics");
-
+  static readonly webhookSubs: DBCollection = new DBCollection("TwitchWebhookSubs");
+  
   private client: faunadb.Client;
 
   constructor(secret: string) {
@@ -190,6 +191,10 @@ export default class DBClient {
 
   static delete(ref: faunadb.Expr) : faunadb.Expr {
     return q.Delete(ref);
+  }
+
+  static deleteExists(ref:faunadb.Expr) : faunadb.Expr {
+    return q.If(q.Exists(ref), q.Delete(ref), null);
   }
   
   static update(ref: faunadb.Expr, data: any) : faunadb.Expr {

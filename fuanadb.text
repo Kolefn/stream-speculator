@@ -1,6 +1,6 @@
 CreateCollection({name: "Channels"})
 CreateCollection({name: "StreamMetrics"})
-CreateCollection({name: "ChannelWebhookSubs"})
+CreateCollection({name: "TwitchWebhookSubs"})
 CreateCollection({name: "TwitchClientAccessTokens"})
 CreateCollection({name: "ScheduledTasks"})
 CreateCollection({name: "Users" })
@@ -10,6 +10,14 @@ CreateIndex({
   source: Collection("Channels"),
   terms: [
     { field: ["data", "userName"]}
+  ]
+})
+
+CreateIndex({
+  name: "Channels_by_isLive",
+  source: Collection("Channels"),
+  terms: [
+    { field: ["data", "isLive"]}
   ]
 })
 

@@ -5,7 +5,7 @@ import useRequest from '../hooks/useRequest';
 import { getTwitchChannelPageData } from '../api/endpoints';
 import useDBClient from '../hooks/useDBClient';
 import { default as DB } from "../common/DBClient";
-import { TwitchChannelPageData } from '../common/types';
+import { TwitchChannel } from '../common/types';
 
 
 const TwitchChannelPage = () => {
@@ -20,9 +20,9 @@ const TwitchChannelPage = () => {
     if(pageData?.channel.stream && client){
       setViewerCount(pageData.channel.stream.viewerCount);
       const unsub = client.onChange(DB.channels.doc(pageData.channel.id), (latest)=> {
-        const data = (latest.document.data as TwitchChannelPageData);
-        if(data.channel.stream?.viewerCount){
-          setViewerCount(data.channel.stream?.viewerCount);
+        const data = (latest.document.data as TwitchChannel);
+        if(data.stream?.viewerCount){
+          setViewerCount(data.stream?.viewerCount);
         }
       });
       return () => unsub();

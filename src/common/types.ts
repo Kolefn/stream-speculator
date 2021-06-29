@@ -21,6 +21,7 @@ export type TwitchChannel = {
   id: string;
   displayName: string;
   userName: string;
+  isLive: boolean;
   stream?: TwitchStream;
 };
 
