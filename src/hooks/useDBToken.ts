@@ -4,7 +4,7 @@ import useRequest from "./useRequest";
 
 export default () : [DBToken | null, Error | null]=>{
     const [dbToken, dbTokenError] = useRequest(getDBToken);
-    const [loginResponse, loginError] = useRequest(loginAsGuest, Boolean(dbTokenError));
+    const [loginResponse, loginError] = useRequest(loginAsGuest, !Boolean(dbTokenError));
     if(dbToken){
         return [dbToken, null];
     }else if(loginResponse){
