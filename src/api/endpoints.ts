@@ -1,5 +1,5 @@
-import request from "./request";
-import { LoginAsGuestResponse, DBToken, TwitchChannelPageData } from "../common/types";
+import request from './request';
+import { LoginAsGuestResponse, DBToken, TwitchChannelPageData } from '../common/types';
 
 export const loginAsGuest = () => request<LoginAsGuestResponse>('POST', '/api/auth/loginAsGuest');
 export const getDBToken = () => request<DBToken>('GET', '/api/auth/dbToken');

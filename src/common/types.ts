@@ -2,13 +2,13 @@ export type Milliseconds = number;
 export type UnixEpochTime = Milliseconds;
 
 export type DBToken = {
-    secret: string;
-    expiresAt: Milliseconds;
+  secret: string;
+  expiresAt: Milliseconds;
 };
 
 export type LoginAsGuestResponse = {
-    userId: string;
-    dbToken: DBToken;
+  userId: string;
+  dbToken: DBToken;
 };
 
 export type TwitchStream = {
@@ -25,13 +25,12 @@ export type TwitchChannel = {
   stream?: TwitchStream;
 };
 
-
 export type TwitchChannelPageData = {
-    channel: TwitchChannel,
-}
+  channel: TwitchChannel,
+};
 
 export enum StreamMetricType {
-  ViewerCount = 1
+  ViewerCount = 1,
 }
 
 export type StreamMetric = {

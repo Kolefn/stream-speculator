@@ -1,4 +1,4 @@
-import { default as DB, FaunaRef } from '../../common/DBClient';
+import DB, { FaunaRef } from '../../common/DBClient';
 import Scheduler, { ScheduledTask, StreamMonitoringTasks, TaskType } from '../Scheduler';
 import TwitchClient from '../TwitchClient';
 
@@ -15,33 +15,33 @@ export default (event: any) => {
   }
   return Promise.allSettled(tasks.map(async (task: ScheduledTask) => {
     try {
-      switch(task.type){
+      switch (task.type) {
         case TaskType.MonitorChannel:
-          if(!process.env.LOCAL){
-            //await twitch.subToChannelEvents(task.data.channelId);
+          if (!process.env.LOCAL) {
+            // await twitch.subToChannelEvents(task.data.channelId);
           }
           await scheduler.scheduleBatch(StreamMonitoringTasks);
-        break;
+          break;
         case TaskType.MonitorStreams:
           const nextTasks: ScheduledTask[] = [];
-          await db.forEachPage<FaunaRef>(DB.channels.with("isLive", true), async (page)=> {
-            if(page.data.length > 0){
+          await db.forEachPage<FaunaRef>(DB.channels.with('isLive', true), async (page) => {
+            if (page.data.length > 0) {
               nextTasks.push({
                 type: TaskType.GetRealTimeStreamMetrics,
-                data: page.data.map((ref)=> ref.id),
+                data: page.data.map((ref) => ref.id),
               });
             }
           }, { size: 500 });
-          if(nextTasks.length > 0){
-            nextTasks.push({...task, isRepeat: true });
+          if (nextTasks.length > 0) {
+            nextTasks.push({ ...task, isRepeat: true });
             await scheduler.scheduleBatch(nextTasks);
-          }else{
-            await scheduler.end(task);
+          } else {
+            await Scheduler.end(task);
           }
           break;
         case TaskType.GetRealTimeStreamMetrics:
           const updates = await twitch.getStreamViewerCounts(task.data);
-          await db.exec(DB.batch(...Object.keys(updates).map((channelId)=> {
+          await db.exec(DB.batch(...Object.keys(updates).map((channelId) => {
             const update = updates[channelId];
             return DB.update(DB.channels.doc(channelId), { stream: { viewerCount: update.value } });
             // return DB.batch(
@@ -50,10 +50,11 @@ export default (event: any) => {
             // );
           })));
           break;
+        default:
+          throw new Error(`Unkown task type ${task.type}`);
       }
-    }catch(e){
+    } catch (e) {
       console.error(e);
     }
-    
   }));
 };

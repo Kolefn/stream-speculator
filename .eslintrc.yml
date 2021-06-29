@@ -17,8 +17,9 @@ plugins:
   - '@typescript-eslint'
 rules: {
   "import/extensions": "off",
-  "react/jsx-filename-extension": [1, { "extensions": [".tsx", ".ts"] }]
-  "no-return-assign": "off"
+  "react/jsx-filename-extension": [1, { "extensions": [".tsx", ".ts"] }],
+  "no-return-assign": "off",
+  "no-case-declarations": "off"
 }
 settings:
   import/resolver:

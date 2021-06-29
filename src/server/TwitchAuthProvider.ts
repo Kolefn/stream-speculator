@@ -1,5 +1,5 @@
 import { AccessToken, ClientCredentialsAuthProvider, revokeToken } from 'twitch-auth';
-import { default as DB, FaunaDoc } from '../common/DBClient';
+import DB, { FaunaDoc } from '../common/DBClient';
 
 type AccessTokenDocData = {
   accessToken: string;
@@ -18,12 +18,12 @@ export default class TwitchAuthProvider extends ClientCredentialsAuthProvider {
   async refresh() : Promise<AccessToken> {
     try {
       const doc = await this.dbClient.exec<FaunaDoc>(DB.get(DB.accessTokens.expireAfter(DB.fromNow(120, 'seconds'))));
-      const data: AccessTokenDocData = doc.data;
+      const { data } = doc;
       return new AccessToken({
         access_token: data.accessToken,
         refresh_token: data.refreshToken,
         scope: data.scope,
-        expires_in: (((doc.ttl ?? 0) / 1000) - Date.now()) / 1000
+        expires_in: (((doc.ttl ?? 0) / 1000) - Date.now()) / 1000,
       });
     } catch {
       const token = await super.refresh();

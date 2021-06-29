@@ -2,7 +2,7 @@ import { ApiClient, HelixEventSubTransportOptions } from 'twitch';
 import { BasicPubSubClient } from 'twitch-pubsub-client';
 import DBClient from '../common/DBClient';
 import TwitchAuthProvider from './TwitchAuthProvider';
-import { StreamMetric, StreamMetricType } from "../common/types";
+import { StreamMetric, StreamMetricType } from '../common/types';
 
 type PubSubViewerCountMessageData = {
   type: 'viewcount' | 'commercial';
@@ -54,7 +54,7 @@ export default class TwitchClient {
 
   static getSecondsBeforeNextViewerCountUpdate(): number {
     const now = new Date();
-    const sec = now.getSeconds() + (now.getMilliseconds()/1000);
+    const sec = now.getSeconds() + (now.getMilliseconds() / 1000);
     if (sec >= 30) {
       return 60 - sec;
     }

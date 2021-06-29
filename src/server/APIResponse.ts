@@ -1,50 +1,51 @@
-import { Response } from "express";
-import Cookie from "./Cookie";
+import { Response } from 'express';
+import Cookie from './Cookie';
 
 export enum APIResponseStatus {
-    Ok = 200,
-    UnAuthorized = 401,
-    NotFound = 404,
-    ServerError = 500,
-};
+  Ok = 200,
+  UnAuthorized = 401,
+  NotFound = 404,
+  ServerError = 500,
+}
 
 export type APIResponseOptions<T extends {}> = {
-    status: APIResponseStatus;
-    data?: T;
-    cookies: Cookie[];
-    contentType?: string;
+  status: APIResponseStatus;
+  data?: T;
+  cookies: Cookie[];
+  contentType?: string;
 };
 
 export default class APIResponse<T extends {}> {
-    static EmptyOk = new APIResponse();
-    static send<T>(options: Partial<APIResponseOptions<T>>, res: Response) : Response {
-        return new APIResponse(options).send(res);
-    }
+  static EmptyOk = new APIResponse();
 
-    readonly options: APIResponseOptions<T>;
+  static send<T>(options: Partial<APIResponseOptions<T>>, res: Response) : Response {
+    return new APIResponse(options).send(res);
+  }
 
-    constructor(options?: Partial<APIResponseOptions<T>>){
-        this.options = {
-            status: APIResponseStatus.Ok,
-            cookies: [],
-            contentType: 'applicaiton/json',
-            ...(options ?? {})
-        };
-    }
+  readonly options: APIResponseOptions<T>;
 
-    send(res: Response) : Response {
-        res.status(this.options.status);
-        res.contentType(this.options.contentType as string);
-        if(this.options.cookies.length > 0){
-            this.options.cookies.forEach((c)=> {
-                c.addTo(res);
-            });
-        }
-        if(this.options.contentType === 'applicaiton/json'){
-            res.json(this.options.data ?? {});
-        }else{
-            res.send(this.options.data);
-        }
-        return res;
+  constructor(options?: Partial<APIResponseOptions<T>>) {
+    this.options = {
+      status: APIResponseStatus.Ok,
+      cookies: [],
+      contentType: 'applicaiton/json',
+      ...(options ?? {}),
+    };
+  }
+
+  send(res: Response) : Response {
+    res.status(this.options.status);
+    res.contentType(this.options.contentType as string);
+    if (this.options.cookies.length > 0) {
+      this.options.cookies.forEach((c) => {
+        c.addTo(res);
+      });
     }
+    if (this.options.contentType === 'applicaiton/json') {
+      res.json(this.options.data ?? {});
+    } else {
+      res.send(this.options.data);
+    }
+    return res;
+  }
 }
