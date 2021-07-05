@@ -1,39 +1,29 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback } from 'react';
 import usePageTitle from '../hooks/usePageTitle';
 import usePathnamePage from '../hooks/usePathnamePage';
 import useRequest from '../hooks/useRequest';
 import { getTwitchChannelPageData } from '../api/endpoints';
-import useDBClient from '../hooks/useDBClient';
-import DB from '../common/DBClient';
-import { TwitchChannel } from '../common/types';
+import { StreamMetricType } from '../common/types';
+import useStreamMetric from '../hooks/useStreamMetric';
 
 const TwitchChannelPage = () => {
   const channelName = usePathnamePage();
   usePageTitle(`${channelName} - Twitch`);
-  const [client] = useDBClient();
   const [pageData] = useRequest(
     useCallback(() => getTwitchChannelPageData(channelName as string), [channelName]),
   );
-  const [viewerCount, setViewerCount] = useState(0);
-  useEffect(() => {
-    if (pageData?.channel.stream && client) {
-      setViewerCount(pageData.channel.stream.viewerCount);
-      const unsub = client.onChange(DB.channels.doc(pageData.channel.id), (latest) => {
-        const data = (latest.document.data as TwitchChannel);
-        if (data.stream?.viewerCount) {
-          setViewerCount(data.stream?.viewerCount);
-        }
-      });
-      return () => unsub();
-    }
-    return undefined;
-  }, [client, pageData]);
+  const [viewerCounts] = useStreamMetric(
+    StreamMetricType.ViewerCount,
+    pageData?.channel.id,
+    pageData?.metrics?.viewerCount,
+  );
+  const currentViewerCount = viewerCounts.length > 0 ? viewerCounts[0].value : 0;
   return (
     <div>
       <h1>{channelName}</h1>
       <h3>
         Viewers:
-        {viewerCount}
+        {currentViewerCount}
       </h3>
     </div>
   );

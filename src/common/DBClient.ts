@@ -1,5 +1,6 @@
 /* eslint-disable max-classes-per-file */
 import faunadb, { query as q } from 'faunadb';
+import { StreamMetricType } from './types';
 
 class DBCollection {
   constructor(public readonly name: string) {}
@@ -206,6 +207,19 @@ export default class DBClient {
     return q.Update(ref, { data });
   }
 
+  static recentEvents(ref: faunadb.Expr) : faunadb.Expr {
+    return q.Reverse(q.Events(ref));
+  }
+
+  static streamMetric(channelId: string, type: StreamMetricType) : faunadb.Expr {
+    return this.streamMetrics.doc(`${channelId}${type.toString()}`);
+  }
+
+  static updateOrCreate(ref: faunadb.Expr, data: any) : faunadb.Expr {
+    const refified = this.refify(data);
+    return q.If(q.Exists(ref), this.update(ref, refified), q.Create(ref, { data: refified }));
+  }
+
   async exec<T>(expr: faunadb.Expr) : Promise<T> {
     return this.client.query(expr);
   }
@@ -230,5 +244,12 @@ export default class DBClient {
       // eslint-disable-next-line no-await-in-loop
       await callback(page);
     } while (page.after && page.data.length > 0);
+  }
+
+  async firstPage<T>(set: faunadb.Expr, options?: { size?: number }) : Promise<T[]> {
+    const page = await this.client.query<FaunaPage<T>>(
+      q.Paginate(set, options),
+    );
+    return page.data;
   }
 }
