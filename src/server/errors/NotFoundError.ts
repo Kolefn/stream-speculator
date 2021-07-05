@@ -1,6 +1,5 @@
 export default class NotFoundError extends Error {
-    constructor(resourceName: string) {
-      super(`${resourceName} not found.`);
-    }
+  constructor(resourceName: string) {
+    super(`${resourceName} not found.`);
+  }
 }
-  

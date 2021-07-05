@@ -27,18 +27,45 @@ provider:
   environment:
     PUBLIC_FOLDER_PATH: src/public
     REGION: ${self:provider.region}
-    SQS_QUEUE_URL:
+    SQS_QUEUE_URL: !Ref TaskQueue
+    TWITCH_CLIENT_ID: ${env:TWITCH_CLIENT_ID}
+    TWITCH_CLIENT_SECRET: ${env:TWITCH_CLIENT_SECRET}
+    TWITCH_WEBHOOK_SECRET: ${env:TWITCH_WEBHOOK_SECRET}
+    TWITCH_WEBHOOK_CALLBACK: ${env:TWITCH_WEBHOOK_CALLBACK}
+    FAUNADB_SECRET: ${env:FAUNADB_SECRET}
+    COOKIE_SIGNING_KEY: ${env:COOKIE_SIGNING_KEY}
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - sqs:SendMessage
+        - sqs:SendMessageBatch
+      Resource:
+        - !GetAtt TaskQueue.Arn
   
 package:
   patterns:
     - '!./**'
     - node_modules/**
     - build/server/**
+    - build/common/**
     - src/public/**
 
 functions:
   default:
-      handler: build/server/ServerlessExpressApp.default
-      events:
-        - httpApi: '*'
+    handler: build/server/ServerlessExpressApp.default
+    events:
+      - httpApi: '*'
+  taskHandler:
+    handler: build/server/handlers/scheduledTaskHandler.default
+    timeout: 15
+    events:
+      - sqs:
+          arn: !GetAtt TaskQueue.Arn
+          
+resources:
+  Resources:
+    TaskQueue:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: ${self:service}-task-queue
   
