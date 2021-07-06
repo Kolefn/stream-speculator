@@ -1,5 +1,5 @@
 CreateCollection({name: "Channels"})
-CreateCollection({name: "StreamMetrics"})
+CreateCollection({name: "StreamMetrics", history_days: 1 })
 CreateCollection({name: "TwitchWebhookSubs"})
 CreateCollection({name: "TwitchClientAccessTokens"})
 CreateCollection({name: "ScheduledTasks"})
