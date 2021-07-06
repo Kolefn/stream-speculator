@@ -24,11 +24,11 @@ export type ScheduledTask = {
 export const StreamMonitoringTasks = [
   {
     type: TaskType.MonitorStreams,
-    when: { at: { second: 25 } },
+    when: { at: { second: 27 } },
   },
   {
     type: TaskType.MonitorStreams,
-    when: { at: { second: 55 } },
+    when: { at: { second: 57 } },
   },
 ];
 
