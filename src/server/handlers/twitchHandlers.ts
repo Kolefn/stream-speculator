@@ -113,7 +113,7 @@ export const handleTwitchWebhook = async (headers: IncomingHttpHeaders, rawBody:
     const verificationBody = body as EventSubVerificationBody;
     await clients.db.exec(DB.create(DB.webhookSubs,
       {
-        id: verificationBody.subscription.id,
+        _id: verificationBody.subscription.id,
         type: verificationBody.subscription.type,
         channelId: verificationBody.subscription.condition.broadcaster_user_id,
       }));

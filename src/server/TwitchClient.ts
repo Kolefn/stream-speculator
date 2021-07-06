@@ -1,4 +1,4 @@
-import { ApiClient, HelixEventSubTransportOptions } from 'twitch';
+import { ApiClient, HelixEventSubSubscription, HelixEventSubTransportOptions } from 'twitch';
 import { BasicPubSubClient } from 'twitch-pubsub-client';
 import DBClient from '../common/DBClient';
 import TwitchAuthProvider from './TwitchAuthProvider';
@@ -34,22 +34,23 @@ export default class TwitchClient {
     this.api = new ApiClient({ authProvider: this.auth });
   }
 
-  async subToChannelEvents(channelId: string) : Promise<void> {
+  async subToChannelEvents(channelId: string)
+    : Promise<{ [key:string]: HelixEventSubSubscription }> {
     const subOptions: HelixEventSubTransportOptions = {
       secret: process.env.TWITCH_WEBHOOK_SECRET as string,
-      callback: process.env.TWITCH_WEBHOOK_CALLBACK_URL as string,
+      callback: process.env.TWITCH_WEBHOOK_CALLBACK as string,
       method: 'webhook',
     };
-    const results = await Promise.allSettled([
-      this.api.helix.eventSub.subscribeToStreamOnlineEvents(channelId, subOptions),
-      this.api.helix.eventSub.subscribeToStreamOfflineEvents(channelId, subOptions),
-    ]);
+    const onlineReq = this.api.helix.eventSub.subscribeToStreamOnlineEvents(channelId, subOptions);
+    const offlineReq = this.api.helix.eventSub.subscribeToStreamOfflineEvents(
+      channelId,
+      subOptions,
+    );
 
-    const rejected = results.filter((r) => r.status === 'rejected');
+    const onlineSub = await onlineReq;
+    const offlineSub = await offlineReq;
 
-    if (rejected.length > 0) {
-      throw new Error('One or more channel subscription operations failed.');
-    }
+    return { onlineSub, offlineSub };
   }
 
   static getSecondsBeforeNextViewerCountUpdate(): number {

@@ -252,11 +252,11 @@ export default class DBClient {
   async history<T>(ref: faunadb.Expr, maxAgeMs: number) : Promise<T[]> {
     const page = await this.client.query<FaunaPage<T>>(
       q.Map(
-        q.Paginate(ref, { events: true, after: q.TimeSubtract(q.Now(), maxAgeMs, 'milliseconds') }), 
-        q.Lambda("doc", q.Select(["data"], q.Var("doc")))
-      )
+        q.Paginate(ref, { events: true, after: q.TimeSubtract(q.Now(), maxAgeMs, 'milliseconds') }),
+        q.Lambda('doc', q.Select(['data'], q.Var('doc'))),
+      ),
     );
 
     return page.data;
-  };
+  }
 }
