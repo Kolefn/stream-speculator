@@ -31,7 +31,7 @@ export default (event: any) => {
                 data: page.data.map((ref) => ref.id),
               });
             }
-          }, { size: 500 });
+          }, { size: 450 });
           if (nextTasks.length > 0) {
             nextTasks.push({ ...task, isRepeat: true });
             await scheduler.scheduleBatch(nextTasks);
@@ -43,11 +43,7 @@ export default (event: any) => {
           const updates = await twitch.getStreamViewerCounts(task.data);
           await db.exec(DB.batch(...Object.keys(updates).map((channelId) => {
             const update = updates[channelId];
-            return DB.update(DB.channels.doc(channelId), { stream: { viewerCount: update.value } });
-            // return DB.batch(
-            //   DB.create<StreamMetric>(DB.streamMetrics, update),
-            //   DB.update(DB.channels.doc(channelId), { stream: { viewerCount: update.value } })
-            // );
+            return DB.updateOrCreate(DB.streamMetric(update.channelId, update.type), update);
           })));
           break;
         default:

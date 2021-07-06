@@ -27,6 +27,9 @@ export type TwitchChannel = {
 
 export type TwitchChannelPageData = {
   channel: TwitchChannel,
+  metrics?: {
+    viewerCount?: StreamMetricPoint[];
+  }
 };
 
 export enum StreamMetricType {
@@ -39,3 +42,5 @@ export type StreamMetric = {
   value: number;
   timestamp: number;
 };
+
+export type StreamMetricPoint = Pick<StreamMetric, 'value' | 'timestamp'>;

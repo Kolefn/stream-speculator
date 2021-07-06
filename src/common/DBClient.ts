@@ -1,5 +1,6 @@
 /* eslint-disable max-classes-per-file */
 import faunadb, { query as q } from 'faunadb';
+import { StreamMetricType } from './types';
 
 class DBCollection {
   constructor(public readonly name: string) {}
@@ -67,6 +68,13 @@ export type FaunaTokenDoc = {
 
 export type FaunaStreamData = {
   document: FaunaDoc;
+};
+
+export type FaunaDocEvent<T> = {
+  ts: number;
+  action: string;
+  document: FaunaRef;
+  data: T;
 };
 
 export default class DBClient {
@@ -206,6 +214,15 @@ export default class DBClient {
     return q.Update(ref, { data });
   }
 
+  static streamMetric(channelId: string, type: StreamMetricType) : faunadb.Expr {
+    return this.streamMetrics.doc(`${channelId}${type.toString()}`);
+  }
+
+  static updateOrCreate(ref: faunadb.Expr, data: any) : faunadb.Expr {
+    const refified = this.refify(data);
+    return q.If(q.Exists(ref), this.update(ref, refified), q.Create(ref, { data: refified }));
+  }
+
   async exec<T>(expr: faunadb.Expr) : Promise<T> {
     return this.client.query(expr);
   }
@@ -231,4 +248,15 @@ export default class DBClient {
       await callback(page);
     } while (page.after && page.data.length > 0);
   }
+
+  async history<T>(ref: faunadb.Expr, maxAgeMs: number) : Promise<T[]> {
+    const page = await this.client.query<FaunaPage<T>>(
+      q.Map(
+        q.Paginate(ref, { events: true, after: q.TimeSubtract(q.Now(), maxAgeMs, 'milliseconds') }), 
+        q.Lambda("doc", q.Select(["data"], q.Var("doc")))
+      )
+    );
+
+    return page.data;
+  };
 }
