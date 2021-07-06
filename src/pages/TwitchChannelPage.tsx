@@ -1,11 +1,11 @@
 import React, { useCallback } from 'react';
+import { Line as LineChart } from 'react-chartjs-2';
 import usePageTitle from '../hooks/usePageTitle';
 import usePathnamePage from '../hooks/usePathnamePage';
 import useRequest from '../hooks/useRequest';
 import { getTwitchChannelPageData } from '../api/endpoints';
 import { StreamMetricType } from '../common/types';
 import useStreamMetric from '../hooks/useStreamMetric';
-import { LineChart, Line } from 'recharts';
 
 const TwitchChannelPage = () => {
   const channelName = usePathnamePage();
@@ -18,17 +18,51 @@ const TwitchChannelPage = () => {
     pageData?.channel.id,
     pageData?.metrics?.viewerCount,
   );
-  const currentViewerCount = viewerCounts.length > 0 ? viewerCounts[viewerCounts.length-1].value : 0;
+  const currentViewerCount = viewerCounts.length > 0
+    ? viewerCounts[viewerCounts.length - 1].value : 0;
   return (
     <div>
-      <h1>{channelName}</h1>
+      <h1>
+        {channelName}
+        {' - '}
+        {pageData?.channel.isLive ? 'Live' : 'Offline'}
+      </h1>
       <h3>
         Viewers:
         {currentViewerCount}
       </h3>
-      <LineChart width={400} height={400} data={viewerCounts}>
-        <Line type="monotone" dataKey="value" stroke="#8884d8" strokeWidth={2} dot={false} />
-      </LineChart>
+      <LineChart
+        type="line"
+        width={500}
+        height={400}
+        data={{
+          labels: viewerCounts.map((_, i) => i.toString()),
+          datasets: [{
+            data: viewerCounts,
+          }],
+        }}
+        options={{
+          animation: false,
+          parsing: {
+            yAxisKey: 'value',
+            xAxisKey: 'timestamp',
+          },
+          plugins: {
+            title: {
+              display: false,
+            },
+            legend: { display: false },
+          },
+          scales: {
+            x: {
+              display: false,
+            },
+            y: {
+              display: false,
+            },
+          },
+        }}
+      />
     </div>
   );
 };
