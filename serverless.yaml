@@ -46,17 +46,17 @@ package:
   patterns:
     - '!./**'
     - node_modules/**
-    - build/server/**
-    - build/common/**
+    - build/src/server/**
+    - build/src/common/**
     - src/public/**
 
 functions:
   default:
-    handler: build/server/ServerlessExpressApp.default
+    handler: build/src/server/ServerlessExpressApp.default
     events:
       - httpApi: '*'
   taskHandler:
-    handler: build/server/handlers/scheduledTaskHandler.default
+    handler: build/src/server/handlers/scheduledTaskHandler.default
     timeout: 15
     events:
       - sqs:

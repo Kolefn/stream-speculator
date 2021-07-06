@@ -4,6 +4,13 @@ import cookieParser from 'cookie-parser';
 import APIResponse, { APIResponseStatus } from './APIResponse';
 import { getDBToken, loginAsGuest } from './handlers/authHandlers';
 import { getTwitchChannelPageData, handleTwitchWebhook } from './handlers/twitchHandlers';
+import TwitchClient from './TwitchClient';
+import DBClient from '../common/DBClient';
+import Scheduler from './Scheduler';
+
+const dbClient = new DBClient(process.env.FAUNADB_SECRET as string);
+const twitch = new TwitchClient(dbClient);
+const scheduler = new Scheduler();
 
 const expressify = async <T>(responder: () => Promise<{} | APIResponse<T>>, res: Response) => {
   try {
@@ -40,11 +47,13 @@ ExpressApp.post('/api/auth/loginAsGuest', async (req, res) => {
 });
 
 ExpressApp.get('/api/twitch/:channelName', async (req, res) => {
-  expressify(() => getTwitchChannelPageData(req.params.channelName), res);
+  expressify(() => getTwitchChannelPageData(req.params.channelName,
+    { db: dbClient, twitch, scheduler }), res);
 });
 
 ExpressApp.post('/api/twitch/webhook', (req, res) => {
-  expressify(() => handleTwitchWebhook(req.headers, req.body), res);
+  expressify(() => handleTwitchWebhook(req.headers, req.body,
+    { db: dbClient, scheduler }), res);
 });
 
 ExpressApp.use(express.static(process.env.PUBLIC_FOLDER_PATH as string));

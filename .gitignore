@@ -78,6 +78,9 @@ typings/
 
 # Webpack
 *.bundle.js
+bundle-stats.json
 
 # Typescript
 build
+
+.DS_Store

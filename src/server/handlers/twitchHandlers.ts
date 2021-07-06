@@ -10,10 +10,6 @@ import Scheduler, { StreamMonitoringTasks, TaskType } from '../Scheduler';
 import TwitchClient from '../TwitchClient';
 import APIResponse from '../APIResponse';
 
-const dbClient = new DB(process.env.FAUNADB_SECRET as string);
-const twitch = new TwitchClient(dbClient);
-const scheduler = new Scheduler();
-
 interface EventSubSubscriptionBody {
   id: string;
   status: HelixEventSubSubscriptionStatus;
@@ -36,12 +32,13 @@ interface EventSubNotificationBody extends BaseEventSubBody {
   event: { [key: string] : any };
 }
 
-export const getTwitchChannelPageData = async (name: string)
+export const getTwitchChannelPageData = async (name: string,
+  clients: { db: DB, twitch: TwitchClient, scheduler: Scheduler })
 : Promise<TwitchChannelPageData> => {
   const userName = name.toLowerCase();
   try {
     const channel = DB.deRef<TwitchChannel>(
-      await dbClient.exec(
+      await clients.db.exec(
         DB.get(DB.channels.with('userName', userName)),
       ),
     );
@@ -49,22 +46,22 @@ export const getTwitchChannelPageData = async (name: string)
       return {
         channel,
         metrics: {
-          viewerCount: await dbClient.history<StreamMetricPoint>(
-            DB.streamMetric(channel.id, StreamMetricType.ViewerCount), 
-            1000 * 60 * 60
+          viewerCount: await clients.db.history<StreamMetricPoint>(
+            DB.streamMetric(channel.id, StreamMetricType.ViewerCount),
+            1000 * 60 * 60,
           ),
         },
       };
     }
     return { channel };
-  } catch(e) {
+  } catch (e) {
     console.error(e);
-    const stream = await twitch.api.helix.streams.getStreamByUserName(userName);
+    const stream = await clients.twitch.api.helix.streams.getStreamByUserName(userName);
     if (!stream) {
       throw new NotFoundError(`${userName} TwitchStream`);
     }
 
-    const result = await dbClient.exec<FaunaDocCreate>(
+    const result = await clients.db.exec<FaunaDocCreate>(
       DB.create<TwitchChannel>(DB.channels, {
         id: stream.userId,
         displayName: stream.userDisplayName,
@@ -79,7 +76,7 @@ export const getTwitchChannelPageData = async (name: string)
     );
 
     if (result.created) {
-      await scheduler.schedule({
+      await clients.scheduler.schedule({
         type: TaskType.MonitorChannel,
         data: { channelId: stream.userId },
       });
@@ -89,7 +86,8 @@ export const getTwitchChannelPageData = async (name: string)
   }
 };
 
-export const handleTwitchWebhook = async (headers: IncomingHttpHeaders, rawBody: string)
+export const handleTwitchWebhook = async (headers: IncomingHttpHeaders, rawBody: string,
+  clients: { scheduler: Scheduler, db: DB })
 : Promise<APIResponse<any>> => {
   const messageId = headers['twitch-eventsub-message-id'] as string;
   const timestamp = headers['twitch-eventsub-message-timestamp'] as string;
@@ -113,7 +111,7 @@ export const handleTwitchWebhook = async (headers: IncomingHttpHeaders, rawBody:
 
   if (type === 'webhook_callback_verification') {
     const verificationBody = body as EventSubVerificationBody;
-    await dbClient.exec(DB.create(DB.webhookSubs,
+    await clients.db.exec(DB.create(DB.webhookSubs,
       {
         id: verificationBody.subscription.id,
         type: verificationBody.subscription.type,
@@ -124,7 +122,9 @@ export const handleTwitchWebhook = async (headers: IncomingHttpHeaders, rawBody:
       data: verificationBody.challenge,
       contentType: 'plain/text',
     });
-  } if (type === 'notification') {
+  }
+
+  if (type === 'notification') {
     const notificationBody = body as EventSubNotificationBody;
     const { event } = notificationBody;
     const eventType = notificationBody.subscription.type;
@@ -138,10 +138,10 @@ export const handleTwitchWebhook = async (headers: IncomingHttpHeaders, rawBody:
           viewerCount: 0,
         },
       };
-      await dbClient.exec(DB.update(DB.channels.doc(channelId), update));
-      await scheduler.scheduleBatch(StreamMonitoringTasks);
+      await clients.db.exec(DB.update(DB.channels.doc(channelId), update));
+      await clients.scheduler.scheduleBatch(StreamMonitoringTasks);
     } else if (eventType === 'stream.offline') {
-      await dbClient.exec(DB.update(DB.channels.doc(channelId), { isLive: false }));
+      await clients.db.exec(DB.update(DB.channels.doc(channelId), { isLive: false }));
     }
     return new APIResponse({
       status: 200,
