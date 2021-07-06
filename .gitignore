@@ -78,6 +78,7 @@ typings/
 
 # Webpack
 *.bundle.js
+*.bundle.js.*
 bundle-stats.json
 
 # Typescript
