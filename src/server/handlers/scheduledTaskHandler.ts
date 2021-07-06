@@ -18,7 +18,7 @@ export default (event: any) => {
       switch (task.type) {
         case TaskType.MonitorChannel:
           if (!process.env.LOCAL) {
-            // await twitch.subToChannelEvents(task.data.channelId);
+            await twitch.subToChannelEvents(task.data.channelId);
           }
           await scheduler.scheduleBatch(StreamMonitoringTasks);
           break;

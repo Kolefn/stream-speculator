@@ -27,10 +27,10 @@ const restartServer = () => {
   if (server) {
     server.close();
   }
-  const Scheduler = require('./build/server/Scheduler').default;
-  const ScheduledTaskHandler = require('./build/server/handlers/scheduledTaskHandler').default;
+  const Scheduler = require('./build/src/server/Scheduler').default;
+  const ScheduledTaskHandler = require('./build/src/server/handlers/scheduledTaskHandler').default;
   Scheduler.localHandler = (task)=> ScheduledTaskHandler([task]);
-  const service = require('./build/server/ExpressApp').default;
+  const service = require('./build/src/server/ExpressApp').default;
   server = service.listen(8080);
   server.on('error', (err)=> console.error(err));
 };
