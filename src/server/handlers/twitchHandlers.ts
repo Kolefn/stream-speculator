@@ -2,7 +2,7 @@ import { IncomingHttpHeaders } from 'http';
 import crypto from 'crypto';
 import { HelixEventSubSubscriptionStatus, HelixEventSubTransportData } from 'twitch/lib';
 import {
-  TwitchChannelPageData, TwitchChannel, StreamMetricType, StreamMetric,
+  TwitchChannelPageData, TwitchChannel, StreamMetricType, StreamMetricPoint,
 } from '../../common/types';
 import DB, { FaunaDocCreate } from '../../common/DBClient';
 import NotFoundError from '../errors/NotFoundError';
@@ -39,27 +39,26 @@ interface EventSubNotificationBody extends BaseEventSubBody {
 export const getTwitchChannelPageData = async (name: string)
 : Promise<TwitchChannelPageData> => {
   const userName = name.toLowerCase();
-  const channel = DB.deRef<TwitchChannel>(
-    await dbClient.exec(
-      DB.get(DB.channels.with('userName', userName)),
-    ),
-  );
   try {
+    const channel = DB.deRef<TwitchChannel>(
+      await dbClient.exec(
+        DB.get(DB.channels.with('userName', userName)),
+      ),
+    );
     if (channel.isLive) {
       return {
         channel,
         metrics: {
-          viewerCount: await dbClient.firstPage<StreamMetric>(
-            DB.recentEvents(DB.streamMetric(channel.id, StreamMetricType.ViewerCount)),
-            {
-              size: 120, // last hour of updates
-            },
+          viewerCount: await dbClient.history<StreamMetricPoint>(
+            DB.streamMetric(channel.id, StreamMetricType.ViewerCount), 
+            1000 * 60 * 60
           ),
         },
       };
     }
     return { channel };
-  } catch {
+  } catch(e) {
+    console.error(e);
     const stream = await twitch.api.helix.streams.getStreamByUserName(userName);
     if (!stream) {
       throw new NotFoundError(`${userName} TwitchStream`);

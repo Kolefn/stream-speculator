@@ -70,6 +70,13 @@ export type FaunaStreamData = {
   document: FaunaDoc;
 };
 
+export type FaunaDocEvent<T> = {
+  ts: number;
+  action: string;
+  document: FaunaRef;
+  data: T;
+};
+
 export default class DBClient {
   static readonly channels: DBCollection = new DBCollection('Channels');
 
@@ -207,10 +214,6 @@ export default class DBClient {
     return q.Update(ref, { data });
   }
 
-  static recentEvents(ref: faunadb.Expr) : faunadb.Expr {
-    return q.Reverse(q.Events(ref));
-  }
-
   static streamMetric(channelId: string, type: StreamMetricType) : faunadb.Expr {
     return this.streamMetrics.doc(`${channelId}${type.toString()}`);
   }
@@ -246,10 +249,14 @@ export default class DBClient {
     } while (page.after && page.data.length > 0);
   }
 
-  async firstPage<T>(set: faunadb.Expr, options?: { size?: number }) : Promise<T[]> {
+  async history<T>(ref: faunadb.Expr, maxAgeMs: number) : Promise<T[]> {
     const page = await this.client.query<FaunaPage<T>>(
-      q.Paginate(set, options),
+      q.Map(
+        q.Paginate(ref, { events: true, after: q.TimeSubtract(q.Now(), maxAgeMs, 'milliseconds') }), 
+        q.Lambda("doc", q.Select(["data"], q.Var("doc")))
+      )
     );
+
     return page.data;
-  }
+  };
 }

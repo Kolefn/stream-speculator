@@ -6,7 +6,7 @@ import useDBClient from './useDBClient';
 export default (type: StreamMetricType, channelId?: string, initial?: StreamMetricPoint[])
 : [StreamMetricPoint[], Error | null] => {
   const [client, error] = useDBClient();
-  const [history, setHistory] = useState<StreamMetricPoint[]>(initial || []);
+  const [history, setHistory] = useState<StreamMetricPoint[]>([]);
 
   useEffect(() => {
     if (channelId && client) {
@@ -19,7 +19,13 @@ export default (type: StreamMetricType, channelId?: string, initial?: StreamMetr
       return () => unsub();
     }
     return undefined;
-  }, [client, channelId]);
+  }, [client, channelId, history]);
+
+  useEffect(() => {
+    if (initial) {
+      setHistory(initial.filter((item) => !Number.isNaN(item.value)));
+    }
+  }, [initial]);
 
   return [history, error];
 };

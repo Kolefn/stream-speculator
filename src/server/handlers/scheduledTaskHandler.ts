@@ -31,7 +31,7 @@ export default (event: any) => {
                 data: page.data.map((ref) => ref.id),
               });
             }
-          }, { size: 500 });
+          }, { size: 450 });
           if (nextTasks.length > 0) {
             nextTasks.push({ ...task, isRepeat: true });
             await scheduler.scheduleBatch(nextTasks);
