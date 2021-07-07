@@ -43,4 +43,43 @@ export type StreamMetric = {
   timestamp: number;
 };
 
-export type StreamMetricPoint = Pick<StreamMetric, 'value' | 'timestamp'>;
+export type StreamMetricPoint = {
+  value: number;
+  timestamp: number;
+};
+
+export enum PredictionPeriod {
+  HalfMinute = 30,
+  Minute = 60,
+  FiveMinute = 300,
+  TenMinute = 600,
+  ThirtyMinute = 1800,
+  Hour = 3600,
+}
+
+export enum PredictionPosition {
+  Above = 1,
+  Below = 2,
+  Equal = 3,
+}
+
+export type PredictionBase = {
+  channelId: string;
+  metric: StreamMetricType;
+  threshold: number;
+  position: PredictionPosition;
+  period: PredictionPeriod;
+  multiplier: number;
+};
+
+export type PredictionRequest = PredictionBase;
+
+export type Prediction = PredictionBase & {
+  id: string;
+  wager: number;
+  maxReturn: number;
+  targetMetricValue: number;
+  startMetricValue: number;
+  expiresAt: UnixEpochTime;
+  metricValueEnd?: number;
+};
