@@ -2,10 +2,22 @@
 import { checkSchema } from 'express-validator';
 import DBClient from '../../common/DBClient';
 import {
-  Prediction, PredictionPeriod, PredictionPosition, PredictionRequest, StreamMetricPoint, StreamMetricType,
+  Prediction, PredictionWindow,
+  PredictionPosition, PredictionRequest,
+  StreamMetricPoint, StreamMetricType,
 } from '../../common/types';
 import APIResponse from '../APIResponse';
 import Scheduler from '../Scheduler';
+import {
+  fillPointGaps,
+  getWindowPoints,
+  getRiskFactor,
+  getMaxReturnLossMetricVals,
+  getWager,
+  getMaxReturn,
+} from '../../common/predictionUtils';
+
+const POINT_HISTORY_BUFFER_SECONDS = 180; // to avoid missing data at beginning of window
 
 export const predictionRequestValidator = checkSchema({
   channelId: {
@@ -34,12 +46,12 @@ export const predictionRequestValidator = checkSchema({
       options: Object.values(PredictionPosition),
     },
   },
-  period: {
+  window: {
     in: 'body',
     isInt: true,
     toInt: true,
     isIn: {
-      options: Object.values(PredictionPeriod),
+      options: Object.values(PredictionWindow),
     },
   },
   multiplier: {
@@ -52,21 +64,27 @@ export const predictionRequestValidator = checkSchema({
 export const handlePrediction = async (request: PredictionRequest,
   clients: { db: DBClient, scheduler: Scheduler })
 : Promise<APIResponse<Prediction>> => {
-  const points = await clients.db.history<StreamMetricPoint>(
+  let points = await clients.db.history<StreamMetricPoint>(
     DBClient.streamMetric(request.channelId, request.metric),
-    Math.max(PredictionPeriod.FiveMinute, request.period * 1000),
+    (request.window + POINT_HISTORY_BUFFER_SECONDS) * 1000,
   );
-
-  return new APIResponse({
+  points = fillPointGaps(points);
+  points = getWindowPoints(points, request.window);
+  const { maxReturnMetricVal, maxLossMetricVal } = getMaxReturnLossMetricVals(points, request);
+  const wager = getWager(request.window);
+  const maxReturn = getMaxReturn(points, request);
+  const prediction: Prediction = {
+    ...request,
+    id: '',
+    wager,
+    maxReturn,
+    maxReturnMetricVal,
+    maxLossMetricVal,
+    startMetricVal: points[points.length - 1].value,
+    createdAt: Date.now(),
+  };
+  return new APIResponse<Prediction>({
     status: 200,
-    data: {
-      ...request,
-      id: '',
-      wager: 0,
-      maxReturn: 0,
-      targetMetricValue: 0,
-      startMetricValue: 0,
-      expiresAt: 0,
-    },
+    data: prediction,
   });
 };

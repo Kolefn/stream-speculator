@@ -1,5 +1,6 @@
 export type Milliseconds = number;
 export type UnixEpochTime = Milliseconds;
+export type Seconds = number;
 
 export type DBToken = {
   secret: string;
@@ -40,15 +41,15 @@ export type StreamMetric = {
   channelId: string;
   type: StreamMetricType;
   value: number;
-  timestamp: number;
+  timestamp: Seconds;
 };
 
 export type StreamMetricPoint = {
   value: number;
-  timestamp: number;
+  timestamp: Seconds;
 };
 
-export enum PredictionPeriod {
+export enum PredictionWindow {
   HalfMinute = 30,
   Minute = 60,
   FiveMinute = 300,
@@ -68,7 +69,7 @@ export type PredictionBase = {
   metric: StreamMetricType;
   threshold: number;
   position: PredictionPosition;
-  period: PredictionPeriod;
+  window: PredictionWindow;
   multiplier: number;
 };
 
@@ -78,8 +79,9 @@ export type Prediction = PredictionBase & {
   id: string;
   wager: number;
   maxReturn: number;
-  targetMetricValue: number;
-  startMetricValue: number;
-  expiresAt: UnixEpochTime;
-  metricValueEnd?: number;
+  maxReturnMetricVal: number;
+  maxLossMetricVal: number;
+  startMetricVal: number;
+  createdAt: UnixEpochTime;
+  endMetricVal?: number;
 };
