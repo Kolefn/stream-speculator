@@ -20,17 +20,20 @@ export const fillPointGaps = (points: Points)
   return filled;
 };
 
-export const getPointsDelta = (points: Points)
+export const getProjectedDelta = (points: Points, window: PredictionWindow)
 : PointsDelta => {
   if (points.length <= 1) {
     return { value: 0, fraction: 1, positive: true };
   }
-  const left = points[0].value;
-  const right = points[points.length - 1].value;
+  const left = points[0];
+  const right = points[points.length - 1];
+  const lv = left.value;
+  const rv = right.value;
+  const scale = window / (right.timestamp - left.timestamp);
   return {
-    value: right - left,
-    fraction: (right / left) - 1,
-    positive: right >= left,
+    value: (rv - lv) * scale,
+    fraction: ((rv / lv) - 1) * scale,
+    positive: rv >= lv,
   };
 };
 
@@ -56,7 +59,7 @@ export const getRiskFactor = (window: Points, prediction: PredictionBase) : numb
   const { threshold, position } = prediction;
 
   const current = window[window.length - 1].value;
-  const delta = getPointsDelta(window);
+  const delta = getProjectedDelta(window, prediction.window);
   const projected = current + delta.value;
   const above = position === PredictionPosition.Above;
 
