@@ -90,6 +90,8 @@ export default class DBClient {
 
   static readonly webhookSubs: DBCollection = new DBCollection('TwitchWebhookSubs');
 
+  static readonly predictions: DBCollection = new DBCollection('Predictions');
+
   private client: faunadb.Client;
 
   constructor(secret: string) {
@@ -223,6 +225,43 @@ export default class DBClient {
     return q.If(q.Exists(ref), this.update(ref, refified), q.Create(ref, { data: refified }));
   }
 
+  static pageOfEvents(ref: faunadb.Expr, maxAgeMs: number) : faunadb.Expr {
+    return q.Map(
+      q.Paginate(ref, { events: true, after: q.TimeSubtract(q.Now(), maxAgeMs, 'milliseconds') }),
+      q.Lambda('doc', q.Select(['data'], q.Var('doc'))),
+    );
+  }
+
+  static userCoinTransaction(userId: string, cost: number, operation: faunadb.Expr)
+    : faunadb.Expr {
+    const ref = this.users.doc(userId);
+    return q.Let({
+      coins: q.Select(
+        ['data', 'coins'],
+        q.Get(ref),
+      ),
+    }, q.If(
+      q.GTE(
+        q.Var('coins'),
+        cost,
+      ),
+      q.Do(
+        q.Update(ref, { data: { coins: q.Subtract(q.Var('coins'), cost) } }),
+        operation,
+      ),
+      null,
+    ));
+  }
+
+  static ifFieldTrue(ref: faunadb.Expr, field: string, trueExpr: faunadb.Expr,
+    falseExpr: faunadb.Expr | null) : faunadb.Expr {
+    return q.If(
+      q.And(q.Exists(ref), q.Equals(q.Select(['data', field], q.Get(ref)), true)),
+      trueExpr,
+      falseExpr,
+    );
+  }
+
   async exec<T>(expr: faunadb.Expr) : Promise<T> {
     return this.client.query(expr);
   }
@@ -251,10 +290,7 @@ export default class DBClient {
 
   async history<T>(ref: faunadb.Expr, maxAgeMs: number) : Promise<T[]> {
     const page = await this.client.query<FaunaPage<T>>(
-      q.Map(
-        q.Paginate(ref, { events: true, after: q.TimeSubtract(q.Now(), maxAgeMs, 'milliseconds') }),
-        q.Lambda('doc', q.Select(['data'], q.Var('doc'))),
-      ),
+      DBClient.pageOfEvents(ref, maxAgeMs),
     );
 
     return page.data;

@@ -1,6 +1,6 @@
 /* eslint-disable import/prefer-default-export */
 import { checkSchema } from 'express-validator';
-import DBClient from '../../common/DBClient';
+import DBClient, { FaunaDoc, FaunaPage } from '../../common/DBClient';
 import {
   Prediction, PredictionWindow,
   PredictionPosition, PredictionRequest,
@@ -11,11 +11,14 @@ import Scheduler from '../Scheduler';
 import {
   fillPointGaps,
   getWindowPoints,
-  getRiskFactor,
   getMaxReturnLossMetricVals,
   getWager,
   getMaxReturn,
 } from '../../common/predictionUtils';
+import { AuthSession } from './authHandlers';
+import UnAuthorizedError from '../errors/UnAuthorizedError';
+import InsufficientFundsError from '../errors/InsufficientFundsError';
+import NotFoundError from '../errors/NotFoundError';
 
 const POINT_HISTORY_BUFFER_SECONDS = 180; // to avoid missing data at beginning of window
 
@@ -61,30 +64,50 @@ export const predictionRequestValidator = checkSchema({
   },
 });
 
-export const handlePrediction = async (request: PredictionRequest,
+export const handlePrediction = async (session: AuthSession | null, request: PredictionRequest,
   clients: { db: DBClient, scheduler: Scheduler })
-: Promise<APIResponse<Prediction>> => {
-  let points = await clients.db.history<StreamMetricPoint>(
-    DBClient.streamMetric(request.channelId, request.metric),
-    (request.window + POINT_HISTORY_BUFFER_SECONDS) * 1000,
+: Promise<Prediction> => {
+  if (!session) {
+    throw new UnAuthorizedError('CreatePrediction');
+  }
+  const pointsPage = await clients.db.exec<FaunaPage<StreamMetricPoint>>(
+    DBClient.ifFieldTrue(
+      DBClient.channels.doc(request.channelId),
+      'isLive',
+      DBClient.pageOfEvents(
+        DBClient.streamMetric(request.channelId, request.metric),
+        (request.window + POINT_HISTORY_BUFFER_SECONDS) * 1000,
+      ),
+      null,
+    ),
   );
+  if (!pointsPage) {
+    throw new NotFoundError('Prediction Channel');
+  }
+  let points = pointsPage.data;
   points = fillPointGaps(points);
   points = getWindowPoints(points, request.window);
   const { maxReturnMetricVal, maxLossMetricVal } = getMaxReturnLossMetricVals(points, request);
-  const wager = getWager(request.window);
   const maxReturn = getMaxReturn(points, request);
-  const prediction: Prediction = {
-    ...request,
-    id: '',
-    wager,
-    maxReturn,
-    maxReturnMetricVal,
-    maxLossMetricVal,
-    startMetricVal: points[points.length - 1].value,
-    createdAt: Date.now(),
-  };
-  return new APIResponse<Prediction>({
-    status: 200,
-    data: prediction,
-  });
+  const wager = getWager(request.window);
+  const result = await clients.db.exec<FaunaDoc>(
+    DBClient.userCoinTransaction(
+      session.userId,
+      wager * request.multiplier,
+      DBClient.create(DBClient.predictions, {
+        ...request,
+        userId: session.userId,
+        wager,
+        maxReturn,
+        maxReturnMetricVal,
+        maxLossMetricVal,
+        startMetricVal: points[points.length - 1].value,
+        createdAt: Date.now(),
+      }),
+    ),
+  );
+  if (!result) {
+    throw new InsufficientFundsError('Prediction');
+  }
+  return DBClient.deRef<Prediction>(result);
 };

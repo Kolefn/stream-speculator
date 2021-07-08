@@ -10,6 +10,7 @@ const db = new DB(process.env.FAUNADB_SECRET as string);
 const GUEST_TTL_DAYS = 7;
 const GUEST_TTL_MS = GUEST_TTL_DAYS * 86400 * 1000;
 const DB_TOKEN_TTL_SEC = 30 * 60;
+const USER_INITIAL_COINS = 10000;
 
 export type AuthSession = {
   userId: string;
@@ -31,7 +32,7 @@ export const loginAsGuest = async (session: AuthSession | null)
   } else {
     const { user, token } = await db.exec<{ user: FaunaDoc, token: FaunaTokenDoc }>(
       DB.named({
-        user: DB.create(DB.users, { isGuest: true }, DB.fromNow(GUEST_TTL_DAYS, 'days')),
+        user: DB.create(DB.users, { isGuest: true, coins: USER_INITIAL_COINS }, DB.fromNow(GUEST_TTL_DAYS, 'days')),
         token: DB.token(DB.varToRef('user'), DB.fromNow(DB_TOKEN_TTL_SEC, 'seconds')),
       }),
     );

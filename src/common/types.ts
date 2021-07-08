@@ -77,6 +77,7 @@ export type PredictionRequest = PredictionBase;
 
 export type Prediction = PredictionBase & {
   id: string;
+  userId: string;
   wager: number;
   maxReturn: number;
   maxReturnMetricVal: number;

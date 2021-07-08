@@ -4,6 +4,7 @@ CreateCollection({name: "TwitchWebhookSubs"})
 CreateCollection({name: "TwitchClientAccessTokens"})
 CreateCollection({name: "ScheduledTasks"})
 CreateCollection({name: "Users" })
+CreateCollection({name: "Predictions"})
 
 CreateIndex({
   name: "Channels_by_userName",

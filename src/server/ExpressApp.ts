@@ -6,14 +6,15 @@ import APIResponse, { APIResponseStatus } from './APIResponse';
 import TwitchClient from './TwitchClient';
 import DBClient from '../common/DBClient';
 import Scheduler from './Scheduler';
-import { getDBToken, loginAsGuest } from './handlers/authHandlers';
+import { AuthSession, getDBToken, loginAsGuest } from './handlers/authHandlers';
 import { getTwitchChannelPageData, handleTwitchWebhook } from './handlers/twitchHandlers';
 import { handlePrediction, predictionRequestValidator } from './handlers/predictionHandlers';
 
 declare global {
   namespace Express {
     interface Request {
-      rawBody: any
+      rawBody: any;
+      session: AuthSession | null;
     }
   }
 }
@@ -50,23 +51,20 @@ const ExpressApp = express();
 
 ExpressApp.use((req, _res, next) => {
   req.rawBody = req.body;
+  try {
+    req.session = JSON.parse(req.signedCookies.session);
+  } catch {
+    req.session = null;
+  }
   next();
 });
 
 ExpressApp.use(express.json());
 ExpressApp.use(cookieParser(process.env.COOKIE_SIGNING_KEY as string));
 
-const getSession = (req: Request) : any => {
-  try {
-    return JSON.parse(req.signedCookies.session);
-  } catch (e) {
-    return null;
-  }
-};
+ExpressApp.get('/api/auth/dbToken', buildHandler((req) => getDBToken(req.session)));
 
-ExpressApp.get('/api/auth/dbToken', buildHandler((req) => getDBToken(getSession(req))));
-
-ExpressApp.post('/api/auth/loginAsGuest', buildHandler((req) => loginAsGuest(getSession(req))));
+ExpressApp.post('/api/auth/loginAsGuest', buildHandler((req) => loginAsGuest(req.session)));
 
 ExpressApp.get('/api/twitch/:channelName', buildHandler((req) => getTwitchChannelPageData(req.params.channelName,
   { db: dbClient, twitch, scheduler })));
@@ -74,7 +72,7 @@ ExpressApp.get('/api/twitch/:channelName', buildHandler((req) => getTwitchChanne
 ExpressApp.post('/api/twitch/webhook', buildHandler((req) => handleTwitchWebhook(req.headers, req.rawBody,
   { db: dbClient, scheduler })));
 
-ExpressApp.post('/api/predict', buildHandler((req) => handlePrediction(req.body, { db: dbClient, scheduler }),
+ExpressApp.post('/api/predict', buildHandler((req) => handlePrediction(req.session, req.body, { db: dbClient, scheduler }),
   predictionRequestValidator));
 
 ExpressApp.use(express.static(process.env.PUBLIC_FOLDER_PATH as string));
