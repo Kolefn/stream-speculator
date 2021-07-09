@@ -97,7 +97,6 @@ export default class DBClient {
   constructor(secret: string) {
     this.client = new faunadb.Client({
       secret,
-      observer: (res) => console.log(res.responseHeaders),
     });
   }
 

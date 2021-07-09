@@ -67,7 +67,6 @@ export default class TwitchClient {
     await this.pubsub.listen(channelIds.map((id) => `video-playback-by-id.${id}`), this.auth);
     const output: StreamMetricUpdateByChannel = {};
     let outputSize = 0;
-    const listenTime = Date.now();
     await new Promise((resolve) => {
       const timeout = setTimeout(() => {
         resolve(output);
@@ -91,7 +90,6 @@ export default class TwitchClient {
         }
       });
     });
-    console.log(`Topics arrived after ${((Date.now() - listenTime) / 1000)}s`);
     await this.pubsub.disconnect();
     return output;
   }
