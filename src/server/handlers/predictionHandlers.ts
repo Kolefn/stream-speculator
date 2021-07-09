@@ -6,7 +6,6 @@ import {
   PredictionPosition, PredictionRequest,
   StreamMetricPoint, StreamMetricType,
 } from '../../common/types';
-import APIResponse from '../APIResponse';
 import Scheduler from '../Scheduler';
 import {
   fillPointGaps,
