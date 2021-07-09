@@ -1,10 +1,10 @@
-CreateCollection({name: "Channels"})
+CreateCollection({name: "Channels", history_days: 0 })
 CreateCollection({name: "StreamMetrics", history_days: 1 })
-CreateCollection({name: "TwitchWebhookSubs"})
-CreateCollection({name: "TwitchClientAccessTokens"})
-CreateCollection({name: "ScheduledTasks"})
-CreateCollection({name: "Users" })
-CreateCollection({name: "Predictions"})
+CreateCollection({name: "TwitchWebhookSubs", history_days: 0 })
+CreateCollection({name: "TwitchClientAccessTokens", history_days: 0 })
+CreateCollection({name: "ScheduledTasks", history_days: 0 })
+CreateCollection({name: "Users", history_days: 0  })
+CreateCollection({name: "Predictions", history_days: 0 })
 
 CreateIndex({
   name: "Channels_by_userName",

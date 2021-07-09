@@ -95,7 +95,10 @@ export default class DBClient {
   private client: faunadb.Client;
 
   constructor(secret: string) {
-    this.client = new faunadb.Client({ secret });
+    this.client = new faunadb.Client({
+      secret,
+      observer: (res) => console.log(res.responseHeaders),
+    });
   }
 
   static collection(name: string) : DBCollection {
@@ -222,7 +225,9 @@ export default class DBClient {
 
   static updateOrCreate(ref: faunadb.Expr, data: any) : faunadb.Expr {
     const refified = this.refify(data);
-    return q.If(q.Exists(ref), this.update(ref, refified), q.Create(ref, { data: refified }));
+    return q.If(q.Exists(ref),
+      q.Do(this.update(ref, refified), false),
+      q.Do(q.Create(ref, { data: refified }), true));
   }
 
   static pageOfEvents(ref: faunadb.Expr, maxAgeMs: number) : faunadb.Expr {
@@ -259,6 +264,20 @@ export default class DBClient {
       q.And(q.Exists(ref), q.Equals(q.Select(['data', field], q.Get(ref)), true)),
       trueExpr,
       falseExpr,
+    );
+  }
+
+  static ifTrueSetFalse(ref: faunadb.Expr, field: string) : faunadb.Expr {
+    return q.If(
+      q.Equals(
+        q.Select(['data', field], q.Get(ref)),
+        true,
+      ),
+      q.Do(
+        q.Update(ref, { data: { [field]: false } }),
+        true,
+      ),
+      false,
     );
   }
 

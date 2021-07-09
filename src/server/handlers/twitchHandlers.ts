@@ -2,11 +2,11 @@ import { IncomingHttpHeaders } from 'http';
 import crypto from 'crypto';
 import { HelixEventSubSubscriptionStatus, HelixEventSubTransportData } from 'twitch/lib';
 import {
-  TwitchChannelPageData, TwitchChannel, StreamMetricType, StreamMetricPoint,
+  TwitchChannelPageData, TwitchChannel, StreamMetricType, StreamMetricPoint, StreamMetric,
 } from '../../common/types';
 import DB, { FaunaDocCreate } from '../../common/DBClient';
 import NotFoundError from '../errors/NotFoundError';
-import Scheduler, { StreamMonitoringTasks, TaskType } from '../Scheduler';
+import Scheduler, { StreamMonitoringInitialTask, TaskType } from '../Scheduler';
 import TwitchClient from '../TwitchClient';
 import APIResponse from '../APIResponse';
 
@@ -54,25 +54,33 @@ export const getTwitchChannelPageData = async (name: string,
       };
     }
     return { channel };
-  } catch (e) {
-    console.error(e);
+  } catch {
     const stream = await clients.twitch.api.helix.streams.getStreamByUserName(userName);
     if (!stream) {
       throw new NotFoundError(`${userName} TwitchStream`);
     }
 
     const result = await clients.db.exec<FaunaDocCreate>(
-      DB.create<TwitchChannel>(DB.channels, {
-        id: stream.userId,
-        displayName: stream.userDisplayName,
-        userName: stream.userName,
-        isLive: true,
-        stream: {
-          id: stream.id,
-          startedAt: stream.startDate.getTime(),
-          viewerCount: stream.viewers,
-        },
-      }),
+      DB.batch(
+        DB.create<StreamMetric & { id: string }>(DB.streamMetrics, {
+          id: `${stream.userId}${StreamMetricType.ViewerCount.toString()}`,
+          channelId: stream.userId,
+          type: StreamMetricType.ViewerCount,
+          value: stream.viewers,
+          timestamp: Date.now() / 1000,
+        }),
+        DB.create<TwitchChannel>(DB.channels, {
+          id: stream.userId,
+          displayName: stream.userDisplayName,
+          userName: stream.userName,
+          isLive: true,
+          stream: {
+            id: stream.id,
+            startedAt: stream.startDate.getTime(),
+            viewerCount: stream.viewers,
+          },
+        }),
+      ),
     );
 
     if (result.created) {
@@ -139,9 +147,15 @@ export const handleTwitchWebhook = async (headers: IncomingHttpHeaders, rawBody:
         },
       };
       await clients.db.exec(DB.update(DB.channels.doc(channelId), update));
-      await clients.scheduler.scheduleBatch(StreamMonitoringTasks);
+      await clients.scheduler.schedule(StreamMonitoringInitialTask);
     } else if (eventType === 'stream.offline') {
-      await clients.db.exec(DB.update(DB.channels.doc(channelId), { isLive: false }));
+      await clients.db.exec(
+        DB.batch(
+          DB.update(DB.scheduledTasks.doc(TaskType.MonitorStreams.toString()),
+            { streamsChanged: true }),
+          DB.update(DB.channels.doc(channelId), { isLive: false }),
+        ),
+      );
     }
     return new APIResponse({
       status: 200,

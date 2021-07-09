@@ -51,6 +51,12 @@ const ExpressApp = express();
 
 ExpressApp.use((req, _res, next) => {
   req.rawBody = req.body;
+  next();
+});
+
+ExpressApp.use(express.json());
+ExpressApp.use(cookieParser(process.env.COOKIE_SIGNING_KEY as string));
+ExpressApp.use((req, _res, next) => {
   try {
     req.session = JSON.parse(req.signedCookies.session);
   } catch {
@@ -58,9 +64,6 @@ ExpressApp.use((req, _res, next) => {
   }
   next();
 });
-
-ExpressApp.use(express.json());
-ExpressApp.use(cookieParser(process.env.COOKIE_SIGNING_KEY as string));
 
 ExpressApp.get('/api/auth/dbToken', buildHandler((req) => getDBToken(req.session)));
 

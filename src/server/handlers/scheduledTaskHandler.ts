@@ -1,5 +1,5 @@
 import DB, { FaunaRef } from '../../common/DBClient';
-import Scheduler, { ScheduledTask, StreamMonitoringTasks, TaskType } from '../Scheduler';
+import Scheduler, { ScheduledTask, StreamMonitoringInitialTask, TaskType } from '../Scheduler';
 import TwitchClient from '../TwitchClient';
 
 const db = new DB(process.env.FAUNADB_SECRET as string);
@@ -20,20 +20,28 @@ export default (event: any) => {
           if (!process.env.LOCAL) {
             await twitch.subToChannelEvents(task.data.channelId);
           }
-          await scheduler.scheduleBatch(StreamMonitoringTasks);
+          await scheduler.schedule(StreamMonitoringInitialTask);
           break;
         case TaskType.MonitorStreams:
           const nextTasks: ScheduledTask[] = [];
-          await db.forEachPage<FaunaRef>(DB.channels.with('isLive', true), async (page) => {
-            if (page.data.length > 0) {
-              nextTasks.push({
-                type: TaskType.GetRealTimeStreamMetrics,
-                data: page.data.map((ref) => ref.id),
-              });
-            }
-          }, { size: 450 });
+          const streamsChanged = await db.exec<boolean>(
+            DB.ifTrueSetFalse(DB.scheduledTasks.doc(TaskType.MonitorStreams.toString()), 'streamsChanged'),
+          );
+          if (streamsChanged) {
+            await db.forEachPage<FaunaRef>(DB.channels.with('isLive', true), async (page) => {
+              if (page.data.length > 0) {
+                nextTasks.push({
+                  type: TaskType.GetRealTimeStreamMetrics,
+                  data: page.data.map((ref) => ref.id),
+                });
+              }
+            }, { size: 450 });
+          } else {
+            nextTasks.push(...task.data.subTasks);
+          }
+
           if (nextTasks.length > 0) {
-            nextTasks.push({ ...task, isRepeat: true });
+            nextTasks.push({ ...task, data: { subTasks: [...nextTasks] }, isRepeat: true });
             await scheduler.scheduleBatch(nextTasks);
           } else {
             await Scheduler.end(task);
@@ -43,7 +51,7 @@ export default (event: any) => {
           const updates = await twitch.getStreamViewerCounts(task.data);
           await db.exec(DB.batch(...Object.keys(updates).map((channelId) => {
             const update = updates[channelId];
-            return DB.updateOrCreate(DB.streamMetric(update.channelId, update.type), update);
+            return DB.update(DB.streamMetric(update.channelId, update.type), update);
           })));
           break;
         default:
