@@ -1,4 +1,6 @@
 import DB, { FaunaRef } from '../../common/DBClient';
+import { getPredictionReturn } from '../../common/predictionUtils';
+import { Prediction, StreamMetric } from '../../common/types';
 import Scheduler, { ScheduledTask, StreamMonitoringInitialTask, TaskType } from '../Scheduler';
 import TwitchClient from '../TwitchClient';
 
@@ -53,6 +55,30 @@ export default (event: any) => {
             const update = updates[channelId];
             return DB.update(DB.streamMetric(update.channelId, update.type), update);
           })));
+          break;
+        case TaskType.ProcessPrediction:
+          const prediction = task.data as Prediction;
+          const expiresAt = prediction.createdAt - prediction.window * 1000;
+          if (expiresAt - Date.now() > 1000) {
+            await scheduler.schedule(task);
+          } else {
+            const metric = await db.exec<StreamMetric>(
+              DB.get(
+                DB.streamMetric(prediction.channelId, prediction.metric),
+              ),
+            );
+            const payout = getPredictionReturn(prediction, metric.value) * prediction.multiplier;
+            const predictionUpdate = DB.update(
+              DB.predictions.doc(prediction.id),
+              { endMetricVal: metric.value },
+            );
+            await db.exec(
+              payout > 0 ? DB.batch(
+                DB.updateUserCoins(prediction.userId, payout),
+                predictionUpdate,
+              ) : predictionUpdate,
+            );
+          }
           break;
         default:
           throw new Error(`Unkown task type ${task.type}`);

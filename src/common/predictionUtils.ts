@@ -1,4 +1,5 @@
 import {
+  Prediction,
   PredictionBase, PredictionPosition, PredictionWindow, StreamMetricPoint,
 } from './types';
 
@@ -98,4 +99,12 @@ export const getMaxReturn = (window: Points, prediction: PredictionBase) : numbe
   const risk = getRiskFactor(window, prediction);
   const wager = getWager(prediction.window);
   return wager + (wager * risk);
+};
+
+export const getPredictionReturn = (prediction: Prediction, currentMetricValue: number)
+: number => {
+  const accuracy = Math.max(0, Math.min(1, (currentMetricValue - prediction.maxLossMetricVal)
+  / (prediction.maxReturnMetricVal - prediction.maxLossMetricVal)));
+
+  return Math.floor(accuracy * prediction.maxReturn);
 };

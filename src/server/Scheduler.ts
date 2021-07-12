@@ -4,10 +4,13 @@ import DB from '../common/DBClient';
 
 const db = new DB(process.env.FAUNADB_SECRET as string);
 
+const MAX_DELAY_SECONDS = 60 * 15;
+
 export enum TaskType {
   MonitorChannel = 0,
   MonitorStreams = 1,
   GetRealTimeStreamMetrics = 2,
+  ProcessPrediction = 3,
 }
 
 export type ScheduledTask = {
@@ -17,6 +20,7 @@ export type ScheduledTask = {
     at?: {
       second: number;
     };
+    timestamp?: number;
   }[],
   isRepeat?: boolean,
 };
@@ -31,10 +35,16 @@ const getDelaySeconds = (task: ScheduledTask) : number => {
   if (task.when && task.when.length > 0) {
     const now = new Date();
     return task.when.reduce((minDelay, w) => {
-      const sec = now.getSeconds() + (now.getMilliseconds() / 1000);
-      const until = w.at?.second as number - sec;
-      const delay = Math.floor(until < 0 ? until + 60 : until);
-      return Math.min(minDelay, (task.isRepeat && delay === 0) ? 60 : delay);
+      if (typeof w.at?.second === 'number') {
+        const sec = now.getSeconds() + (now.getMilliseconds() / 1000);
+        const until = w.at?.second as number - sec;
+        const delay = Math.floor(until < 0 ? until + 60 : until);
+        return Math.min(minDelay, (task.isRepeat && delay === 0) ? 60 : delay);
+      } if (typeof w.timestamp === 'number') {
+        return Math.min(MAX_DELAY_SECONDS, minDelay, Math.floor((w.timestamp - Date.now()) / 1000));
+      }
+
+      return minDelay;
     }, Infinity);
   }
 

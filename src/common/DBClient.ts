@@ -236,7 +236,22 @@ export default class DBClient {
     );
   }
 
-  static userCoinTransaction(userId: string, cost: number, operation: faunadb.Expr)
+  static updateUserCoins(userId: string, delta: number) : faunadb.Expr {
+    const ref = this.users.doc(userId);
+    return q.Update(ref, {
+      data: {
+        coins: q.Add(
+          q.Select(
+            ['data', 'coins'],
+            q.Get(ref),
+          ),
+          delta,
+        ),
+      },
+    });
+  }
+
+  static userCoinPurchase(userId: string, cost: number, operation: faunadb.Expr)
     : faunadb.Expr {
     const ref = this.users.doc(userId);
     return q.Let({

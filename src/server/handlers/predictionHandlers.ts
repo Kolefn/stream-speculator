@@ -6,7 +6,7 @@ import {
   PredictionPosition, PredictionRequest,
   StreamMetricPoint, StreamMetricType,
 } from '../../common/types';
-import Scheduler from '../Scheduler';
+import Scheduler, { TaskType } from '../Scheduler';
 import {
   fillPointGaps,
   getWindowPoints,
@@ -90,7 +90,7 @@ export const handlePrediction = async (session: AuthSession | null, request: Pre
   const maxReturn = getMaxReturn(points, request);
   const wager = getWager(request.window);
   const result = await clients.db.exec<FaunaDoc>(
-    DBClient.userCoinTransaction(
+    DBClient.userCoinPurchase(
       session.userId,
       wager * request.multiplier,
       DBClient.create(DBClient.predictions, {
@@ -108,5 +108,15 @@ export const handlePrediction = async (session: AuthSession | null, request: Pre
   if (!result) {
     throw new InsufficientFundsError('Prediction');
   }
-  return DBClient.deRef<Prediction>(result);
+  const prediction = DBClient.deRef<Prediction>(result);
+  await clients.scheduler.schedule({
+    type: TaskType.ProcessPrediction,
+    data: prediction,
+    when: [
+      {
+        timestamp: prediction.createdAt + (prediction.window * 1000),
+      },
+    ],
+  });
+  return prediction;
 };
