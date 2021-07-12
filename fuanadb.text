@@ -31,10 +31,11 @@ CreateIndex({
 })
 
 CreateIndex({
-  name: "StreamMetrics_by_channelRef",
-  source: Collection("StreamMetrics"),
+  name: "Predictions_by_channelRef_and_userRef",
+  source: Collection("Predictions"),
   terms: [
-    { field: ["data", "channelRef"] }
+    { field: ["data", "channelRef"] },
+    { field: ["data", "userRef"] },
   ]
 })
 

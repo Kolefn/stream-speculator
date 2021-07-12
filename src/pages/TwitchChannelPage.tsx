@@ -3,8 +3,8 @@ import { Line as LineChart } from 'react-chartjs-2';
 import usePageTitle from '../hooks/usePageTitle';
 import usePathnamePage from '../hooks/usePathnamePage';
 import useRequest from '../hooks/useRequest';
-import { getTwitchChannelPageData } from '../api/endpoints';
-import { StreamMetricType } from '../common/types';
+import { getTwitchChannelPageData, predict } from '../api/endpoints';
+import { PredictionPosition, PredictionWindow, StreamMetricType } from '../common/types';
 import useStreamMetric from '../hooks/useStreamMetric';
 
 const TwitchChannelPage = () => {
@@ -63,6 +63,32 @@ const TwitchChannelPage = () => {
           },
         }}
       />
+      <button
+        type="button"
+        onClick={() => predict({
+          metric: StreamMetricType.ViewerCount,
+          multiplier: 1,
+          window: PredictionWindow.Minute,
+          threshold: currentViewerCount,
+          position: PredictionPosition.Above,
+          channelId: pageData?.channel.id as string,
+        })}
+      >
+        UP
+      </button>
+      <button
+        type="button"
+        onClick={() => predict({
+          metric: StreamMetricType.ViewerCount,
+          multiplier: 1,
+          window: PredictionWindow.Minute,
+          threshold: currentViewerCount,
+          position: PredictionPosition.Below,
+          channelId: pageData?.channel.id as string,
+        })}
+      >
+        DOWN
+      </button>
     </div>
   );
 };

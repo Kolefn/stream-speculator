@@ -1,4 +1,4 @@
-import DB, { FaunaRef } from '../../common/DBClient';
+import DB, { FaunaDoc, FaunaRef } from '../../common/DBClient';
 import { getPredictionReturn } from '../../common/predictionUtils';
 import { Prediction, StreamMetric } from '../../common/types';
 import Scheduler, { ScheduledTask, StreamMonitoringInitialTask, TaskType } from '../Scheduler';
@@ -58,15 +58,16 @@ export default (event: any) => {
           break;
         case TaskType.ProcessPrediction:
           const prediction = task.data as Prediction;
-          const expiresAt = prediction.createdAt - prediction.window * 1000;
+          const expiresAt = prediction.createdAt + prediction.window * 1000;
           if (expiresAt - Date.now() > 1000) {
             await scheduler.schedule(task);
           } else {
-            const metric = await db.exec<StreamMetric>(
+            const metricDoc = await db.exec<FaunaDoc>(
               DB.get(
                 DB.streamMetric(prediction.channelId, prediction.metric),
               ),
             );
+            const metric = metricDoc.data as StreamMetric;
             const payout = getPredictionReturn(prediction, metric.value) * prediction.multiplier;
             const predictionUpdate = DB.update(
               DB.predictions.doc(prediction.id),

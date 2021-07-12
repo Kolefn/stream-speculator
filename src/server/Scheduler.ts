@@ -22,6 +22,7 @@ export type ScheduledTask = {
     };
     timestamp?: number;
   }[],
+  repeats?: boolean,
   isRepeat?: boolean,
 };
 
@@ -29,6 +30,7 @@ export const StreamMonitoringInitialTask: ScheduledTask = {
   type: TaskType.MonitorStreams,
   when: [{ at: { second: 27 } }, { at: { second: 57 } }],
   data: { streamsChanged: true },
+  repeats: true,
 };
 
 const getDelaySeconds = (task: ScheduledTask) : number => {
@@ -41,7 +43,7 @@ const getDelaySeconds = (task: ScheduledTask) : number => {
         const delay = Math.floor(until < 0 ? until + 60 : until);
         return Math.min(minDelay, (task.isRepeat && delay === 0) ? 60 : delay);
       } if (typeof w.timestamp === 'number') {
-        return Math.min(MAX_DELAY_SECONDS, minDelay, Math.floor((w.timestamp - Date.now()) / 1000));
+        return Math.min(MAX_DELAY_SECONDS, minDelay, Math.round((w.timestamp - Date.now()) / 1000));
       }
 
       return minDelay;
@@ -55,7 +57,7 @@ const repeatingTaskQuery = (task: ScheduledTask) => DB.updateOrCreate(
   DB.scheduledTasks.doc(task.type.toString()), (task.data ?? {}),
 );
 
-const isInitial = (task: ScheduledTask) : boolean => Boolean(task.when && !task.isRepeat);
+const isInitial = (task: ScheduledTask) : boolean => Boolean(task.repeats && !task.isRepeat);
 
 export default class Scheduler {
   static localHandler: (task: ScheduledTask) => Promise<void>;

@@ -17,11 +17,17 @@ class DBCollection {
     return q.Match(q.Index(`${this.name}_by_${field}`), value);
   }
 
-  withRefTo(collection: DBCollection, id: string) : faunadb.Expr {
-    let field = collection.name.toLowerCase();
-    field = field.substring(0, field.length - 1);
-    field = `${field}Ref`;
-    return this.with(field, id);
+  withRefsTo(refs: { collection: DBCollection, id: string }[]) : faunadb.Expr {
+    const fields = refs.map((ref) => {
+      let field = ref.collection.name.toLowerCase();
+      field = field.substring(0, field.length - 1);
+      field = `${field}Ref`;
+      return field;
+    });
+
+    const indexName = `${this.name}_by_${fields.join('_and_')}`;
+
+    return q.Match(q.Index(indexName), ...refs.map((ref) => ref.collection.doc(ref.id)));
   }
 
   fieldExists(field: string) : faunadb.Expr {

@@ -25,41 +25,35 @@ export const predictionRequestValidator = checkSchema({
   channelId: {
     in: 'body',
     isString: true,
-    isNumeric: true,
   },
   metric: {
     in: 'body',
     isInt: true,
-    toInt: true,
-    isIn: {
-      options: Object.values(StreamMetricType),
+    custom: {
+      options: (val) => StreamMetricType[val] !== undefined,
     },
   },
   threshold: {
     in: 'body',
     isInt: true,
-    toInt: true,
   },
   position: {
     in: 'body',
     isInt: true,
-    toInt: true,
-    isIn: {
-      options: Object.values(PredictionPosition),
+    custom: {
+      options: (val) => PredictionPosition[val] !== undefined,
     },
   },
   window: {
     in: 'body',
     isInt: true,
-    toInt: true,
-    isIn: {
-      options: Object.values(PredictionWindow),
+    custom: {
+      options: (val) => PredictionWindow[val] !== undefined,
     },
   },
   multiplier: {
     in: 'body',
     isInt: true,
-    toInt: true,
   },
 });
 
