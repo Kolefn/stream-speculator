@@ -1,5 +1,6 @@
 import React, { useCallback } from 'react';
 import { Line as LineChart } from 'react-chartjs-2';
+import { observer } from 'mobx-react-lite';
 import usePageTitle from '../hooks/usePageTitle';
 import usePathnamePage from '../hooks/usePathnamePage';
 import useRequest from '../hooks/useRequest';
@@ -8,7 +9,7 @@ import { PredictionPosition, PredictionWindow, StreamMetricType } from '../../co
 import useStreamMetric from '../hooks/useStreamMetric';
 import Header from '../components/Header';
 
-const TwitchChannelPage = () => {
+const TwitchChannelPage = observer(() => {
   const channelName = usePathnamePage();
   usePageTitle(`${channelName} - Twitch`);
   const [pageData] = useRequest(
@@ -93,6 +94,6 @@ const TwitchChannelPage = () => {
       </button>
     </div>
   );
-};
+});
 
 export default TwitchChannelPage;

@@ -1,7 +1,8 @@
+import { observer } from 'mobx-react-lite';
 import React from 'react';
 import { useUserStore } from '../stores/userStore';
 
-export default () => {
+export default observer(() => {
   const userStore = useUserStore();
   return (
     <div>
@@ -11,4 +12,4 @@ export default () => {
       </h3>
     </div>
   );
-};
+});

@@ -17,6 +17,10 @@ export class UserStore {
     return this.id !== '';
   }
 
+  get dbClient() : DBClient | null {
+    return this.dbToken ? new DBClient(this.dbToken.secret) : null;
+  }
+
   constructor() {
     makeAutoObservable(this);
   }
@@ -40,9 +44,7 @@ export class UserStore {
     if (!this.dbToken) {
       return;
     }
-    const client = new DBClient(this.dbToken?.secret);
-
-    client.onChange(DBClient.users.doc(this.id), (data) => {
+    this.dbClient?.onChange(DBClient.users.doc(this.id), (data) => {
       const user = data.document.data as User;
       runInAction(() => {
         this.coins = user.coins;

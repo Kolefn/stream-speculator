@@ -50,8 +50,7 @@ CreateRole({
     }
   ],
   privileges: [
-    {resource: Collection("Channels"), actions: {read: true}},
     {resource: Collection("StreamMetrics"), actions: {read: true}},
-    {resource: Index("StreamMetrics_by_channelRef"), actions: {read: true}},
+    {resource: Collection("Users"), actions { read: Query(ref => Equals(ref, CurrentIdentity())) }}
   ]
 })
