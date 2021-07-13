@@ -2,9 +2,12 @@ import { IncomingHttpHeaders } from 'http';
 import crypto from 'crypto';
 import { HelixEventSubSubscriptionStatus, HelixEventSubTransportData } from 'twitch/lib';
 import {
-  TwitchChannelPageData, TwitchChannel, StreamMetricType, StreamMetricPoint, StreamMetric,
+  TwitchChannelPageData,
+  TwitchChannel, StreamMetricType,
+  StreamMetricPoint, StreamMetric, Prediction,
 } from '../../common/types';
-import DB, { FaunaDocCreate } from '../../common/DBClient';
+import { AuthSession } from './authHandlers';
+import DB, { FaunaDoc, FaunaDocCreate, FaunaPage } from '../../common/DBClient';
 import NotFoundError from '../errors/NotFoundError';
 import Scheduler, { StreamMonitoringInitialTask, TaskType } from '../Scheduler';
 import TwitchClient from '../TwitchClient';
@@ -32,35 +35,58 @@ interface EventSubNotificationBody extends BaseEventSubBody {
   event: { [key: string] : any };
 }
 
-export const getTwitchChannelPageData = async (name: string,
-  clients: { db: DB, twitch: TwitchClient, scheduler: Scheduler })
+export const getTwitchChannelPageData = async (params:
+{
+  channelName: string,
+  session: AuthSession | null,
+  db: DB, twitch: TwitchClient,
+  scheduler: Scheduler
+})
 : Promise<TwitchChannelPageData> => {
-  const userName = name.toLowerCase();
+  const userName = params.channelName.toLowerCase();
   try {
     const channel = DB.deRef<TwitchChannel>(
-      await clients.db.exec(
+      await params.db.exec(
         DB.get(DB.channels.with('userName', userName)),
       ),
     );
+    const response: TwitchChannelPageData = { channel };
     if (channel.isLive) {
-      return {
-        channel,
-        metrics: {
-          viewerCount: await clients.db.history<StreamMetricPoint>(
-            DB.streamMetric(channel.id, StreamMetricType.ViewerCount),
-            1000 * 60 * 60,
-          ),
-        },
+      response.metrics = {
+        viewerCount: await params.db.history<StreamMetricPoint>(
+          DB.streamMetric(channel.id, StreamMetricType.ViewerCount),
+          1000 * 60 * 60,
+        ),
       };
     }
-    return { channel };
+
+    if (params.session) {
+      response.predictions = DB.deRefPage<Prediction>(
+        await params.db.exec<FaunaPage<FaunaDoc>>(
+          DB.firstPage(
+            DB.predictions.withRefsTo([
+              {
+                collection: DB.channels,
+                id: channel.id,
+              },
+              {
+                collection: DB.users,
+                id: params.session.userId,
+              },
+            ]),
+            10,
+          ),
+        ),
+      );
+    }
+    return response;
   } catch {
-    const stream = await clients.twitch.api.helix.streams.getStreamByUserName(userName);
+    const stream = await params.twitch.api.helix.streams.getStreamByUserName(userName);
     if (!stream) {
       throw new NotFoundError(`${userName} TwitchStream`);
     }
 
-    const result = await clients.db.exec<FaunaDocCreate>(
+    const result = await params.db.exec<FaunaDocCreate>(
       DB.batch(
         DB.create<StreamMetric & { id: string }>(DB.streamMetrics, {
           id: `${stream.userId}${StreamMetricType.ViewerCount.toString()}`,
@@ -84,7 +110,7 @@ export const getTwitchChannelPageData = async (name: string,
     );
 
     if (result.created) {
-      await clients.scheduler.schedule({
+      await params.scheduler.schedule({
         type: TaskType.MonitorChannel,
         data: { channelId: stream.userId },
       });

@@ -69,8 +69,13 @@ ExpressApp.get('/api/auth/dbToken', buildHandler((req) => getDBToken(req.session
 
 ExpressApp.post('/api/auth/loginAsGuest', buildHandler((req) => loginAsGuest(req.session)));
 
-ExpressApp.get('/api/twitch/:channelName', buildHandler((req) => getTwitchChannelPageData(req.params.channelName,
-  { db: dbClient, twitch, scheduler })));
+ExpressApp.get('/api/twitch/:channelName', buildHandler((req) => getTwitchChannelPageData({
+  db: dbClient,
+  twitch,
+  scheduler,
+  channelName: req.params.channelName,
+  session: req.session,
+})));
 
 ExpressApp.post('/api/twitch/webhook', buildHandler((req) => handleTwitchWebhook(req.headers, req.rawBody,
   { db: dbClient, scheduler })));

@@ -6,6 +6,7 @@ import useRequest from '../hooks/useRequest';
 import { getTwitchChannelPageData, predict } from '../api/endpoints';
 import { PredictionPosition, PredictionWindow, StreamMetricType } from '../common/types';
 import useStreamMetric from '../hooks/useStreamMetric';
+import Header from '../components/Header';
 
 const TwitchChannelPage = () => {
   const channelName = usePathnamePage();
@@ -22,6 +23,7 @@ const TwitchChannelPage = () => {
     ? viewerCounts[viewerCounts.length - 1].value : 0;
   return (
     <div>
+      <Header />
       <h1>
         {channelName}
         {' - '}

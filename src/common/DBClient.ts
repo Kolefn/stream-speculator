@@ -158,6 +158,10 @@ export default class DBClient {
     return { id: doc.ref.id, ...data };
   }
 
+  static deRefPage<T>(page: FaunaPage<FaunaDoc>) : T[] {
+    return page.data.map((doc) => this.deRef<T>(doc));
+  }
+
   static refify(data: { [key: string]: any }) : { [key: string] : any } {
     const docData: any = {};
     Object.keys(data).forEach((k) => {
@@ -301,15 +305,25 @@ export default class DBClient {
     );
   }
 
+  static firstPage(set: faunadb.Expr, size?: number) : faunadb.Expr {
+    return q.Paginate(set, { size });
+  }
+
   async exec<T>(expr: faunadb.Expr) : Promise<T> {
     return this.client.query(expr);
   }
 
-  onChange(ref: faunadb.Expr, handler: (data: FaunaStreamData)=> void) : Function {
+  onChange(ref: faunadb.Expr, handler: (data: FaunaStreamData)=> void,
+    options?: { includeSnapshot?: boolean }) : Function {
     const stream = this.client.stream.document(ref);
     stream.on('version', (data) => {
       handler(data as FaunaStreamData);
     });
+    if (options?.includeSnapshot) {
+      stream.on('snapshot', (data) => {
+        handler({ document: data } as FaunaStreamData);
+      });
+    }
     stream.start();
     return () => stream.close();
   }

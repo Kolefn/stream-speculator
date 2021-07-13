@@ -1,29 +1,26 @@
 import { useState, useEffect } from 'react';
 import DB from '../common/DBClient';
+import { fillPointGaps } from '../common/predictionUtils';
 import { StreamMetric, StreamMetricType, StreamMetricPoint } from '../common/types';
-import useDBClient from './useDBClient';
+import useDBChangeListener from './useDBChangeListener';
 
 export default (type: StreamMetricType, channelId?: string, initial?: StreamMetricPoint[])
 : [StreamMetricPoint[], Error | null] => {
-  const [client, error] = useDBClient();
   const [history, setHistory] = useState<StreamMetricPoint[]>([]);
 
+  const [data, error] = useDBChangeListener<StreamMetric>(
+    channelId ? DB.streamMetric(channelId, type) : undefined,
+  );
+
   useEffect(() => {
-    if (channelId && client) {
-      const unsub = client.onChange(DB.streamMetric(channelId, type), (latest) => {
-        const data = (latest.document.data as StreamMetric);
-        if (data.value) {
-          setHistory([...history, data]);
-        }
-      });
-      return () => unsub();
+    if (data) {
+      setHistory(fillPointGaps([...history, data]));
     }
-    return undefined;
-  }, [client, channelId, history]);
+  }, [data]);
 
   useEffect(() => {
     if (initial) {
-      setHistory(initial.filter((item) => !Number.isNaN(item.value)));
+      setHistory(fillPointGaps(initial));
     }
   }, [initial]);
 

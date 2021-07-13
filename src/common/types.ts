@@ -31,6 +31,7 @@ export type TwitchChannelPageData = {
   metrics?: {
     viewerCount?: StreamMetricPoint[];
   }
+  predictions?: Prediction[],
 };
 
 export enum StreamMetricType {
@@ -85,4 +86,9 @@ export type Prediction = PredictionBase & {
   startMetricVal: number;
   createdAt: UnixEpochTime;
   endMetricVal?: number;
+};
+
+export type User = {
+  id: string;
+  coins: number;
 };
