@@ -1,7 +1,7 @@
 import request from './request';
 import {
   LoginAsGuestResponse, DBToken, TwitchChannelPageData, Prediction, PredictionBase,
-} from '../common/types';
+} from '../../common/types';
 
 export const loginAsGuest = () => request<LoginAsGuestResponse>('POST', '/api/auth/loginAsGuest');
 export const getDBToken = () => request<DBToken>('GET', '/api/auth/dbToken');

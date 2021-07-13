@@ -4,7 +4,7 @@ import usePageTitle from '../hooks/usePageTitle';
 import usePathnamePage from '../hooks/usePathnamePage';
 import useRequest from '../hooks/useRequest';
 import { getTwitchChannelPageData, predict } from '../api/endpoints';
-import { PredictionPosition, PredictionWindow, StreamMetricType } from '../common/types';
+import { PredictionPosition, PredictionWindow, StreamMetricType } from '../../common/types';
 import useStreamMetric from '../hooks/useStreamMetric';
 import Header from '../components/Header';
 

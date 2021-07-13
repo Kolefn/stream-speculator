@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import DB from '../common/DBClient';
-import { fillPointGaps } from '../common/predictionUtils';
-import { StreamMetric, StreamMetricType, StreamMetricPoint } from '../common/types';
+import DB from '../../common/DBClient';
+import { fillPointGaps } from '../../common/predictionUtils';
+import { StreamMetric, StreamMetricType, StreamMetricPoint } from '../../common/types';
 import useDBChangeListener from './useDBChangeListener';
 
 export default (type: StreamMetricType, channelId?: string, initial?: StreamMetricPoint[])

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import DB from '../common/DBClient';
+import DB from '../../common/DBClient';
 import useDBToken from './useDBToken';
 
 export default () : [DB | null, Error | null] => {

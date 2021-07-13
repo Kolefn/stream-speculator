@@ -1,8 +1,8 @@
 import { createContext, useContext } from 'react';
 import { makeAutoObservable, runInAction } from 'mobx';
 import { loginAsGuest } from '../api/endpoints';
-import { DBToken, User } from '../common/types';
-import DBClient from '../common/DBClient';
+import { DBToken, User } from '../../common/types';
+import DBClient from '../../common/DBClient';
 
 export class UserStore {
   coins: number = 0;
