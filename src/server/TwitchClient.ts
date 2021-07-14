@@ -12,6 +12,12 @@ type PubSubViewerCountMessageData = {
 
 type StreamMetricUpdateByChannel = { [channelId: string] : StreamMetric };
 
+const EVENTSUB_OPTIONS: HelixEventSubTransportOptions = {
+  secret: process.env.TWITCH_WEBHOOK_SECRET as string,
+  callback: process.env.TWITCH_WEBHOOK_CALLBACK as string,
+  method: 'webhook',
+};
+
 export default class TwitchClient {
   static readonly MaxWebsocketTopicsPerIP = 500;
 
@@ -34,23 +40,56 @@ export default class TwitchClient {
     this.api = new ApiClient({ authProvider: this.auth });
   }
 
-  async subToChannelEvents(channelId: string)
+  async deleteSubs(subIds: string[]) : Promise<void> {
+    await Promise.all(subIds.map((id) => this.api.helix.eventSub.deleteSubscription(id)));
+  }
+
+  async subToPredictionEvents(channelId: string)
     : Promise<{ [key:string]: HelixEventSubSubscription }> {
-    const subOptions: HelixEventSubTransportOptions = {
-      secret: process.env.TWITCH_WEBHOOK_SECRET as string,
-      callback: process.env.TWITCH_WEBHOOK_CALLBACK as string,
-      method: 'webhook',
-    };
-    const onlineReq = this.api.helix.eventSub.subscribeToStreamOnlineEvents(channelId, subOptions);
-    const offlineReq = this.api.helix.eventSub.subscribeToStreamOfflineEvents(
+    const predBeginReq = this.api.helix.eventSub.subscribeToChannelPredictionBeginEvents(
       channelId,
-      subOptions,
+      EVENTSUB_OPTIONS,
     );
 
-    const onlineSub = await onlineReq;
-    const offlineSub = await offlineReq;
+    const predEndReq = this.api.helix.eventSub.subscribeToChannelPredictionEndEvents(
+      channelId,
+      EVENTSUB_OPTIONS,
+    );
 
-    return { onlineSub, offlineSub };
+    const predProgReq = this.api.helix.eventSub.subscribeToChannelPredictionProgressEvents(
+      channelId,
+      EVENTSUB_OPTIONS,
+    );
+
+    const predLockReq = this.api.helix.eventSub.subscribeToChannelPredictionLockEvents(
+      channelId,
+      EVENTSUB_OPTIONS,
+    );
+
+    return {
+      predictionBeginSub: await predBeginReq,
+      predictionEndSub: await predEndReq,
+      predictionProgressSub: await predProgReq,
+      predictionLockSub: await predLockReq,
+    };
+  }
+
+  async subToChannelEvents(channelId: string)
+    : Promise<{ [key:string]: HelixEventSubSubscription }> {
+    const onlineReq = this.api.helix.eventSub.subscribeToStreamOnlineEvents(
+      channelId,
+      EVENTSUB_OPTIONS,
+    );
+    const offlineReq = this.api.helix.eventSub.subscribeToStreamOfflineEvents(
+      channelId,
+      EVENTSUB_OPTIONS,
+    );
+    const predictionReq = this.subToPredictionEvents(channelId);
+    return {
+      onlineSub: await onlineReq,
+      offlineSub: await offlineReq,
+      ...(await predictionReq),
+    };
   }
 
   static getSecondsBeforeNextViewerCountUpdate(): number {

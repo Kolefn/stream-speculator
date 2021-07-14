@@ -121,7 +121,7 @@ export const getTwitchChannelPageData = async (params:
 };
 
 export const handleTwitchWebhook = async (headers: IncomingHttpHeaders, rawBody: string,
-  clients: { scheduler: Scheduler, db: DB })
+  clients: { scheduler: Scheduler, db: DB, twitch: TwitchClient })
 : Promise<APIResponse<any>> => {
   const messageId = headers['twitch-eventsub-message-id'] as string;
   const timestamp = headers['twitch-eventsub-message-timestamp'] as string;
@@ -174,12 +174,28 @@ export const handleTwitchWebhook = async (headers: IncomingHttpHeaders, rawBody:
       };
       await clients.db.exec(DB.update(DB.channels.doc(channelId), update));
       await clients.scheduler.schedule(StreamMonitoringInitialTask);
+      await clients.twitch.subToPredictionEvents(channelId);
     } else if (eventType === 'stream.offline') {
       await clients.db.exec(
         DB.batch(
           DB.update(DB.scheduledTasks.doc(TaskType.MonitorStreams.toString()),
             { streamsChanged: true }),
           DB.update(DB.channels.doc(channelId), { isLive: false }),
+        ),
+      );
+      const page = await clients.db.exec<FaunaPage<FaunaDoc>>(
+        DB.firstPage(DB.webhookSubs.withRefsTo([{ collection: DB.channels, id: channelId }])),
+      );
+      const docsToDelete = page.data
+        .filter((doc) => doc.data.type !== 'stream.online' && doc.data.type !== 'stream.offline');
+
+      await clients.twitch.deleteSubs(
+        docsToDelete.map(({ data: { _id } }) => _id),
+      );
+
+      await clients.db.exec(
+        DB.batch(
+          ...docsToDelete.map((doc) => DB.delete(DB.webhookSubs.doc(doc.ref.id))),
         ),
       );
     }

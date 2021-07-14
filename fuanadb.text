@@ -39,6 +39,14 @@ CreateIndex({
   ]
 })
 
+CreateIndex({
+  name: "TwitchWebhookSubs_by_channelRef",
+  source: Collection("TwitchWebhookSubs"),
+  terms: [
+    { field: ["data", "channelRef"] },
+  ]
+})
+
 CreateRole({
   name: "Guest",
   membership: [

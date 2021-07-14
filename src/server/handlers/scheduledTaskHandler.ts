@@ -37,7 +37,7 @@ export default (event: any) => {
                   data: page.data.map((ref) => ref.id),
                 });
               }
-            }, { size: 450 });
+            }, { size: TwitchClient.MaxWebsocketTopicsPerIP });
           } else {
             nextTasks.push(...task.data.subTasks);
           }

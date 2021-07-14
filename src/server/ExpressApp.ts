@@ -78,7 +78,7 @@ ExpressApp.get('/api/twitch/:channelName', buildHandler((req) => getTwitchChanne
 })));
 
 ExpressApp.post('/api/twitch/webhook', buildHandler((req) => handleTwitchWebhook(req.headers, req.rawBody,
-  { db: dbClient, scheduler })));
+  { db: dbClient, scheduler, twitch })));
 
 ExpressApp.post('/api/predict', buildHandler((req) => handlePrediction(req.session, req.body, { db: dbClient, scheduler }),
   predictionRequestValidator));
