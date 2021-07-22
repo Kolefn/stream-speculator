@@ -10,8 +10,7 @@ export enum TaskType {
   MonitorChannel = 0,
   MonitorStreams = 1,
   GetRealTimeStreamMetrics = 2,
-  ProcessPrediction = 3,
-  PredictionEnd = 4,
+  PredictionEnd = 3,
 }
 
 export type ScheduledTask = {

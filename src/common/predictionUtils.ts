@@ -1,11 +1,16 @@
 import {
-  Prediction,
-  PredictionBase, PredictionPosition, PredictionWindow, StreamMetricPoint,
+  StreamMetricPoint,
 } from './types';
 
-type PointsDelta = { value: number, fraction: number, positive: boolean };
 type Points = StreamMetricPoint[];
-const WAGER_PER_WINDOW_MINUTE = 100;
+
+export const CHANNEL_POINTS_TO_COINS_RATIO = 1;
+export const MAXIMUM_BET = 50000;
+
+export const channelPointsToCoins = (val: number)
+: number => Math.floor(val * CHANNEL_POINTS_TO_COINS_RATIO);
+
+export const isValidBetAmount = (val: number) : boolean => val > 0 && val <= MAXIMUM_BET;
 
 export const fillPointGaps = (points: Points)
 : Points => {
@@ -21,90 +26,19 @@ export const fillPointGaps = (points: Points)
   return filled;
 };
 
-export const getProjectedDelta = (points: Points, window: PredictionWindow)
-: PointsDelta => {
-  if (points.length <= 1) {
-    return { value: 0, fraction: 1, positive: true };
-  }
-  const left = points[0];
-  const right = points[points.length - 1];
-  const lv = left.value;
-  const rv = right.value;
-  const scale = window / (right.timestamp - left.timestamp);
-  return {
-    value: (rv - lv) * scale,
-    fraction: ((rv / lv) - 1) * scale,
-    positive: rv >= lv,
-  };
-};
-
-export const getMaxReturnLossMetricVals = (window: Points, prediction: PredictionBase)
-: { maxReturnMetricVal: number, maxLossMetricVal: number } => {
-  const current = window[window.length - 1].value;
-  const margin = prediction.threshold - current;
-  if (prediction.position === PredictionPosition.Above) {
-    if (margin >= 0) {
-      return { maxReturnMetricVal: current + (margin * 2), maxLossMetricVal: current };
-    }
-
-    return { maxReturnMetricVal: current, maxLossMetricVal: current + (margin * 2) };
-  }
-
-  if (margin >= 0) {
-    return { maxReturnMetricVal: current, maxLossMetricVal: current + (margin * 2) };
-  }
-  return { maxReturnMetricVal: current + (margin * 2), maxLossMetricVal: current };
-};
-
-export const getRiskFactor = (window: Points, prediction: PredictionBase) : number => {
-  const { threshold, position } = prediction;
-
-  const current = window[window.length - 1].value;
-  const delta = getProjectedDelta(window, prediction.window);
-  const projected = current + delta.value;
-  const above = position === PredictionPosition.Above;
-
-  const projectedFraction = (projected / threshold) - 1;
-  const thresholdFraction = (threshold / projected) - 1;
-
-  if (above) {
-    if (projected >= threshold) {
-      return 1 - Math.min(1, projectedFraction);
-    }
-    return Math.min(1, thresholdFraction);
-  }
-  if (projected >= threshold) {
-    return Math.min(1, projectedFraction);
-  }
-  return 1 - Math.min(1, thresholdFraction);
-};
-
-export const getWindowPoints = (points: Points, window: PredictionWindow)
-: Points => {
-  const right = points[points.length - 1];
-  const leftIndex = points.findIndex((p) => right.timestamp - p.timestamp <= window);
-  if (leftIndex === -1) {
-    return [right];
-  }
-
-  return points.slice(leftIndex);
-};
-
-export const getWager = (windowSeconds: PredictionWindow) : number => {
-  const minutes = windowSeconds / 60;
-  return minutes * WAGER_PER_WINDOW_MINUTE;
-};
-
-export const getMaxReturn = (window: Points, prediction: PredictionBase) : number => {
-  const risk = getRiskFactor(window, prediction);
-  const wager = getWager(prediction.window);
-  return wager + (wager * risk);
-};
-
-export const getPredictionReturn = (prediction: Prediction, currentMetricValue: number)
-: number => {
-  const accuracy = Math.max(0, Math.min(1, (currentMetricValue - prediction.maxLossMetricVal)
-  / (prediction.maxReturnMetricVal - prediction.maxLossMetricVal)));
-
-  return Math.floor(accuracy * prediction.maxReturn);
-};
+// export const getProjectedDelta = (points: Points, window: PredictionWindow)
+// : PointsDelta => {
+//   if (points.length <= 1) {
+//     return { value: 0, fraction: 1, positive: true };
+//   }
+//   const left = points[0];
+//   const right = points[points.length - 1];
+//   const lv = left.value;
+//   const rv = right.value;
+//   const scale = window / (right.timestamp - left.timestamp);
+//   return {
+//     value: (rv - lv) * scale,
+//     fraction: ((rv / lv) - 1) * scale,
+//     positive: rv >= lv,
+//   };
+// };

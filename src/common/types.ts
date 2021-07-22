@@ -83,3 +83,5 @@ export type Bet = {
   outcomeId: string;
   coins: number;
 };
+
+export type BetRequest = Pick<Bet, 'predictionId' | 'outcomeId' | 'coins'>;

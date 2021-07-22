@@ -1,153 +1,63 @@
 /* eslint-disable import/prefer-default-export */
-import { checkSchema } from 'express-validator';
-import DB, { FaunaDoc, FaunaPage } from '../../common/DBClient';
+import { checkSchema } from 'express-validator/src/middlewares/schema';
+import DB, { FaunaDoc } from '../../common/DBClient';
+import { channelPointsToCoins, isValidBetAmount } from '../../common/predictionUtils';
 import {
   Prediction,
-  StreamMetricPoint,
-  StreamMetricType,
-  StreamMetric,
   PredictionOutcome,
   Bet,
+  BetRequest,
 } from '../../common/types';
-import Scheduler, { ScheduledTask, TaskType } from '../Scheduler';
-import {
-  fillPointGaps,
-  getWindowPoints,
-  getMaxReturnLossMetricVals,
-  getWager,
-  getMaxReturn,
-  getPredictionReturn,
-} from '../../common/predictionUtils';
-import { AuthSession } from './authHandlers';
 import UnAuthorizedError from '../errors/UnAuthorizedError';
-import InsufficientFundsError from '../errors/InsufficientFundsError';
-import NotFoundError from '../errors/NotFoundError';
+import { AuthSession } from './authHandlers';
 
-const POINT_HISTORY_BUFFER_SECONDS = 180; // to avoid missing data at beginning of window
-const CHANNEL_POINTS_TO_COINS_RATIO = 1;
-
-export const predictionRequestValidator = checkSchema({
-  channelId: {
+export const betRequestValidator = checkSchema({
+  coins: {
+    in: 'body',
+    isInt: true,
+    custom: {
+      options: isValidBetAmount,
+    },
+  },
+  predictionId: {
     in: 'body',
     isString: true,
+    isNumeric: true,
   },
-  metric: {
+  outcomeId: {
     in: 'body',
-    isInt: true,
-    custom: {
-      options: (val) => StreamMetricType[val] !== undefined,
-    },
-  },
-  threshold: {
-    in: 'body',
-    isInt: true,
-  },
-  position: {
-    in: 'body',
-    isInt: true,
-    custom: {
-      options: (val) => PredictionPosition[val] !== undefined,
-    },
-  },
-  window: {
-    in: 'body',
-    isInt: true,
-    custom: {
-      options: (val) => PredictionWindow[val] !== undefined,
-    },
-  },
-  multiplier: {
-    in: 'body',
-    isInt: true,
+    isString: true,
+    isNumeric: true,
   },
 });
 
-export const handlePrediction = async (session: AuthSession | null, request: PredictionRequest,
-  clients: { db: DB, scheduler: Scheduler })
-: Promise<Prediction> => {
+export const handleBet = async (
+  session: AuthSession | null,
+  request: BetRequest,
+  db: DB,
+) : Promise<Bet> => {
   if (!session) {
-    throw new UnAuthorizedError('CreatePrediction');
+    throw new UnAuthorizedError('Bet');
   }
-  const pointsPage = await clients.db.exec<FaunaPage<StreamMetricPoint>>(
-    DB.ifFieldTrue(
-      DB.channels.doc(request.channelId),
-      'isLive',
-      DB.pageOfEvents(
-        DB.streamMetric(request.channelId, request.metric),
-        (request.window + POINT_HISTORY_BUFFER_SECONDS) * 1000,
+
+  const result = await db.exec<FaunaDoc | null>(
+    DB.ifFieldGTE(
+      DB.predictions.doc(request.predictionId),
+      'locksAt', DB.fromNow(1, 'seconds'),
+      DB.userCoinPurchase(
+        session.userId,
+        request.coins,
+        DB.create(DB.bets, { ...request, userId: session.userId }, DB.fromNow(1, 'days')),
       ),
       null,
     ),
   );
-  if (!pointsPage) {
-    throw new NotFoundError('Prediction Channel');
-  }
-  let points = pointsPage.data;
-  points = fillPointGaps(points);
-  points = getWindowPoints(points, request.window);
-  const { maxReturnMetricVal, maxLossMetricVal } = getMaxReturnLossMetricVals(points, request);
-  const maxReturn = getMaxReturn(points, request);
-  const wager = getWager(request.window);
-  const result = await clients.db.exec<FaunaDoc>(
-    DB.userCoinPurchase(
-      session.userId,
-      wager * request.multiplier,
-      DB.create(DB.predictions, {
-        ...request,
-        userId: session.userId,
-        wager,
-        maxReturn,
-        maxReturnMetricVal,
-        maxLossMetricVal,
-        startMetricVal: points[points.length - 1].value,
-        createdAt: Date.now(),
-      }),
-    ),
-  );
-  if (!result) {
-    throw new InsufficientFundsError('Prediction');
-  }
-  const prediction = DB.deRef<Prediction>(result);
-  await clients.scheduler.schedule({
-    type: TaskType.ProcessPrediction,
-    data: prediction,
-    when: [
-      {
-        timestamp: prediction.createdAt + (prediction.window * 1000),
-      },
-    ],
-  });
-  return prediction;
-};
 
-export const handleTaskProcessPrediction = async (
-  task: ScheduledTask,
-  scheduler: Scheduler,
-  db: DB,
-) => {
-  const prediction = task.data as Prediction;
-  const expiresAt = prediction.createdAt + prediction.window * 1000;
-  if (expiresAt - Date.now() > 1000) {
-    await scheduler.schedule(task);
-  } else {
-    const metricDoc = await db.exec<FaunaDoc>(
-      DB.get(
-        DB.streamMetric(prediction.channelId, prediction.metric),
-      ),
-    );
-    const metric = metricDoc.data as StreamMetric;
-    const payout = getPredictionReturn(prediction, metric.value) * prediction.multiplier;
-    const predictionUpdate = DB.update(
-      DB.predictions.doc(prediction.id),
-      { endMetricVal: metric.value },
-    );
-    await db.exec(
-      payout > 0 ? DB.batch(
-        DB.updateUserCoins(prediction.userId, payout),
-        predictionUpdate,
-      ) : predictionUpdate,
-    );
+  if (!result) {
+    throw new Error('Insufficient funds, or prediction is locked or does not exist.');
   }
+
+  return { ...request, userId: session.userId, id: result.ref.id };
 };
 
 export const handleTaskPredictionEnd = async (data: { predictionId: string }, db: DB) => {
@@ -164,16 +74,19 @@ export const handleTaskPredictionEnd = async (data: { predictionId: string }, db
     if (!winningOutcome || !winningOutcomeId) {
       throw new Error(`Winning outcome not found for: ${winningOutcomeId}`);
     }
-    const earningRatio = (outcomes
+
+    const winningOutcomePool = channelPointsToCoins(winningOutcome.channelPoints)
+    + winningOutcome.coins;
+    const losingOutcomesPool = outcomes
       .filter((item: PredictionOutcome) => item.id !== winningOutcomeId)
-      .reduce((sum: number, item: PredictionOutcome) => item.channelPoints + sum, 0)
-    / winningOutcome.channelPoints) * CHANNEL_POINTS_TO_COINS_RATIO;
+      .map((item: PredictionOutcome) => channelPointsToCoins(item.channelPoints) + item.coins)
+      .reduce((sum: number, coins: number) => coins + sum, 0);
 
     outcomes.forEach((item) => {
       payoutRatios[item.id] = 0;
     });
 
-    payoutRatios[winningOutcomeId] = 1 + earningRatio;
+    payoutRatios[winningOutcomeId] = 1 + (losingOutcomesPool / winningOutcomePool);
   } else {
     // refund
     outcomes.forEach((item) => {

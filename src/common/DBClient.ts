@@ -100,6 +100,8 @@ export default class DBClient {
 
   static readonly bets: DBCollection = new DBCollection('Bets');
 
+  static readonly outcomes: DBCollection = new DBCollection('Outcomes');
+
   private client: faunadb.Client;
 
   constructor(secret: string) {
@@ -142,8 +144,8 @@ export default class DBClient {
       { ref: expr },
       q.If(
         q.Exists(q.Var('ref')),
-        null,
         q.Get(q.Var('ref')),
+        null,
       ),
     );
   }
@@ -307,8 +309,21 @@ export default class DBClient {
     );
   }
 
+  static ifFieldGTE(ref: faunadb.Expr, field: string, value: faunadb.Expr, trueExpr: faunadb.Expr,
+    falseExpr: faunadb.Expr | null) {
+    return q.If(
+      q.And(q.Exists(ref), q.GTE(q.Select(['data', field], q.Get(ref)), value)),
+      trueExpr,
+      falseExpr,
+    );
+  }
+
   static firstPage(set: faunadb.Expr, size?: number) : faunadb.Expr {
     return q.Paginate(set, { size });
+  }
+
+  static getSortedResults(set: faunadb.Expr) : faunadb.Expr {
+    return q.Map(set, q.Lambda(['field1', 'ref'], q.Get(q.Var('ref'))));
   }
 
   async exec<T>(expr: faunadb.Expr) : Promise<T> {

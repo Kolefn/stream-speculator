@@ -65,18 +65,16 @@ export const getTwitchChannelPageData = async (params:
     if (params.session) {
       response.predictions = DB.deRefPage<Prediction>(
         await params.db.exec<FaunaPage<FaunaDoc>>(
-          DB.firstPage(
-            DB.predictions.withRefsTo([
-              {
-                collection: DB.channels,
-                id: channel.id,
-              },
-              {
-                collection: DB.users,
-                id: params.session.userId,
-              },
-            ]),
-            10,
+          DB.getSortedResults(
+            DB.firstPage(
+              DB.predictions.withRefsTo([
+                {
+                  collection: DB.channels,
+                  id: channel.id,
+                },
+              ]),
+              10,
+            ),
           ),
         ),
       );
@@ -237,7 +235,7 @@ export const handleTwitchWebhook = async (headers: IncomingHttpHeaders, rawBody:
         await clients.db.exec(
           DB.batch(
             DB.update(DB.channels.doc(channelId), { predictionUpdate: prediction }),
-            DB.create(DB.predictions, prediction),
+            DB.create(DB.predictions, prediction, DB.fromNow(1, 'days')),
           ),
         );
       } else if (eventType === 'channel.prediction.progress' || eventType === 'channel.prediction.lock') {

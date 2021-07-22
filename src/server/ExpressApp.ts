@@ -8,7 +8,7 @@ import DBClient from '../common/DBClient';
 import Scheduler from './Scheduler';
 import { AuthSession, getDBToken, loginAsGuest } from './handlers/authHandlers';
 import { getTwitchChannelPageData, handleTwitchWebhook } from './handlers/twitchHandlers';
-import { handlePrediction, predictionRequestValidator } from './handlers/predictionHandlers';
+import { handleBet, betRequestValidator } from './handlers/predictionHandlers';
 
 declare global {
   namespace Express {
@@ -80,8 +80,7 @@ ExpressApp.get('/api/twitch/:channelName', buildHandler((req) => getTwitchChanne
 ExpressApp.post('/api/twitch/webhook', buildHandler((req) => handleTwitchWebhook(req.headers, req.rawBody,
   { db: dbClient, scheduler, twitch })));
 
-ExpressApp.post('/api/predict', buildHandler((req) => handlePrediction(req.session, req.body, { db: dbClient, scheduler }),
-  predictionRequestValidator));
+ExpressApp.post('/api/bet', buildHandler((req) => handleBet(req.session, req.body, dbClient)), betRequestValidator);
 
 ExpressApp.use(express.static(process.env.PUBLIC_FOLDER_PATH as string));
 
