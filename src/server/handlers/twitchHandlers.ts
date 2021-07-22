@@ -7,9 +7,11 @@ import {
   StreamMetricPoint, StreamMetric, Prediction,
 } from '../../common/types';
 import { AuthSession } from './authHandlers';
-import DB, { FaunaDoc, FaunaDocCreate, FaunaPage } from '../../common/DBClient';
+import DB, {
+  FaunaDoc, FaunaDocCreate, FaunaPage, FaunaRef,
+} from '../../common/DBClient';
 import NotFoundError from '../errors/NotFoundError';
-import Scheduler, { StreamMonitoringInitialTask, TaskType } from '../Scheduler';
+import Scheduler, { ScheduledTask, StreamMonitoringInitialTask, TaskType } from '../Scheduler';
 import TwitchClient from '../TwitchClient';
 import APIResponse from '../APIResponse';
 
@@ -110,10 +112,13 @@ export const getTwitchChannelPageData = async (params:
     );
 
     if (result.created) {
-      await params.scheduler.schedule({
-        type: TaskType.MonitorChannel,
-        data: { channelId: stream.userId },
-      });
+      await params.scheduler.scheduleBatch([
+        {
+          type: TaskType.MonitorChannel,
+          data: { channelId: stream.userId },
+        },
+        StreamMonitoringInitialTask,
+      ]);
     }
 
     return { channel: DB.deRef<TwitchChannel>(result.doc) };
@@ -205,4 +210,54 @@ export const handleTwitchWebhook = async (headers: IncomingHttpHeaders, rawBody:
   }
 
   return new APIResponse({ status: 200 });
+};
+
+export const handleTaskMonitorChannel = async (
+  data: { channelId: string },
+  twitch: TwitchClient,
+) => {
+  if (!process.env.LOCAL) {
+    await twitch.subToChannelEvents(data.channelId);
+  }
+};
+
+export const handleTaskMonitorStreams = async (
+  task: ScheduledTask,
+  scheduler: Scheduler,
+  db: DB,
+) => {
+  const nextTasks: ScheduledTask[] = [];
+  const streamsChanged = await db.exec<boolean>(
+    DB.ifTrueSetFalse(DB.scheduledTasks.doc(TaskType.MonitorStreams.toString()), 'streamsChanged'),
+  );
+  if (streamsChanged) {
+    await db.forEachPage<FaunaRef>(DB.channels.with('isLive', true), async (page) => {
+      if (page.data.length > 0) {
+        nextTasks.push({
+          type: TaskType.GetRealTimeStreamMetrics,
+          data: page.data.map((ref) => ref.id),
+        });
+      }
+    }, { size: TwitchClient.MaxWebsocketTopicsPerIP });
+  } else {
+    nextTasks.push(...task.data.subTasks);
+  }
+
+  if (nextTasks.length > 0) {
+    nextTasks.push({ ...task, data: { subTasks: [...nextTasks] }, isRepeat: true });
+    await scheduler.scheduleBatch(nextTasks);
+  } else {
+    await Scheduler.end(task);
+  }
+};
+
+export const handleTaskGetRealTimeStreamMetrics = async (
+  data: string[],
+  twitch: TwitchClient, db: DB,
+) => {
+  const updates = await twitch.getStreamViewerCounts(data);
+  await db.exec(DB.batch(...Object.keys(updates).map((channelId) => {
+    const update = updates[channelId];
+    return DB.update(DB.streamMetric(update.channelId, update.type), update);
+  })));
 };

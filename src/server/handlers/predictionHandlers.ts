@@ -1,18 +1,19 @@
 /* eslint-disable import/prefer-default-export */
 import { checkSchema } from 'express-validator';
-import DBClient, { FaunaDoc, FaunaPage } from '../../common/DBClient';
+import DB, { FaunaDoc, FaunaPage } from '../../common/DBClient';
 import {
   Prediction, PredictionWindow,
   PredictionPosition, PredictionRequest,
-  StreamMetricPoint, StreamMetricType,
+  StreamMetricPoint, StreamMetricType, StreamMetric,
 } from '../../common/types';
-import Scheduler, { TaskType } from '../Scheduler';
+import Scheduler, { ScheduledTask, TaskType } from '../Scheduler';
 import {
   fillPointGaps,
   getWindowPoints,
   getMaxReturnLossMetricVals,
   getWager,
   getMaxReturn,
+  getPredictionReturn,
 } from '../../common/predictionUtils';
 import { AuthSession } from './authHandlers';
 import UnAuthorizedError from '../errors/UnAuthorizedError';
@@ -58,17 +59,17 @@ export const predictionRequestValidator = checkSchema({
 });
 
 export const handlePrediction = async (session: AuthSession | null, request: PredictionRequest,
-  clients: { db: DBClient, scheduler: Scheduler })
+  clients: { db: DB, scheduler: Scheduler })
 : Promise<Prediction> => {
   if (!session) {
     throw new UnAuthorizedError('CreatePrediction');
   }
   const pointsPage = await clients.db.exec<FaunaPage<StreamMetricPoint>>(
-    DBClient.ifFieldTrue(
-      DBClient.channels.doc(request.channelId),
+    DB.ifFieldTrue(
+      DB.channels.doc(request.channelId),
       'isLive',
-      DBClient.pageOfEvents(
-        DBClient.streamMetric(request.channelId, request.metric),
+      DB.pageOfEvents(
+        DB.streamMetric(request.channelId, request.metric),
         (request.window + POINT_HISTORY_BUFFER_SECONDS) * 1000,
       ),
       null,
@@ -84,10 +85,10 @@ export const handlePrediction = async (session: AuthSession | null, request: Pre
   const maxReturn = getMaxReturn(points, request);
   const wager = getWager(request.window);
   const result = await clients.db.exec<FaunaDoc>(
-    DBClient.userCoinPurchase(
+    DB.userCoinPurchase(
       session.userId,
       wager * request.multiplier,
-      DBClient.create(DBClient.predictions, {
+      DB.create(DB.predictions, {
         ...request,
         userId: session.userId,
         wager,
@@ -102,7 +103,7 @@ export const handlePrediction = async (session: AuthSession | null, request: Pre
   if (!result) {
     throw new InsufficientFundsError('Prediction');
   }
-  const prediction = DBClient.deRef<Prediction>(result);
+  const prediction = DB.deRef<Prediction>(result);
   await clients.scheduler.schedule({
     type: TaskType.ProcessPrediction,
     data: prediction,
@@ -113,4 +114,34 @@ export const handlePrediction = async (session: AuthSession | null, request: Pre
     ],
   });
   return prediction;
+};
+
+export const handleTaskProcessPrediction = async (
+  task: ScheduledTask,
+  scheduler: Scheduler,
+  db: DB,
+) => {
+  const prediction = task.data as Prediction;
+  const expiresAt = prediction.createdAt + prediction.window * 1000;
+  if (expiresAt - Date.now() > 1000) {
+    await scheduler.schedule(task);
+  } else {
+    const metricDoc = await db.exec<FaunaDoc>(
+      DB.get(
+        DB.streamMetric(prediction.channelId, prediction.metric),
+      ),
+    );
+    const metric = metricDoc.data as StreamMetric;
+    const payout = getPredictionReturn(prediction, metric.value) * prediction.multiplier;
+    const predictionUpdate = DB.update(
+      DB.predictions.doc(prediction.id),
+      { endMetricVal: metric.value },
+    );
+    await db.exec(
+      payout > 0 ? DB.batch(
+        DB.updateUserCoins(prediction.userId, payout),
+        predictionUpdate,
+      ) : predictionUpdate,
+    );
+  }
 };
