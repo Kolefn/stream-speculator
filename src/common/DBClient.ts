@@ -98,6 +98,8 @@ export default class DBClient {
 
   static readonly predictions: DBCollection = new DBCollection('Predictions');
 
+  static readonly bets: DBCollection = new DBCollection('Bets');
+
   private client: faunadb.Client;
 
   constructor(secret: string) {

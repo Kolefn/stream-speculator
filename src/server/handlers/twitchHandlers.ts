@@ -4,7 +4,7 @@ import { HelixEventSubSubscriptionStatus, HelixEventSubTransportData } from 'twi
 import {
   TwitchChannelPageData,
   TwitchChannel, StreamMetricType,
-  StreamMetricPoint, StreamMetric, Prediction,
+  StreamMetricPoint, StreamMetric, Prediction, PredictionOutcome,
 } from '../../common/types';
 import { AuthSession } from './authHandlers';
 import DB, {
@@ -181,6 +181,7 @@ export const handleTwitchWebhook = async (headers: IncomingHttpHeaders, rawBody:
       const { event } = notificationBody;
       const eventType = notificationBody.subscription.type;
       const channelId = event.broadcaster_user_id;
+
       if (eventType === 'stream.online') {
         const update = {
           isLive: true,
@@ -216,6 +217,55 @@ export const handleTwitchWebhook = async (headers: IncomingHttpHeaders, rawBody:
             ...docsToDelete.map((doc) => DB.delete(DB.webhookSubs.doc(doc.ref.id))),
           ),
         );
+      } else if (eventType === 'channel.prediction.begin') {
+        const prediction: Prediction = {
+          id: event.id,
+          channelId: event.broadcaster_user_id,
+          title: event.title,
+          outcomes: event.outcomes.map((item: any) : PredictionOutcome => ({
+            id: item.id,
+            title: item.title,
+            color: item.color,
+            channelPointUsers: 0,
+            channelPoints: 0,
+            coins: 0,
+            coinUsers: 0,
+          })),
+          startedAt: new Date(event.started_at).getTime(),
+          locksAt: new Date(event.locks_at).getTime(),
+        };
+        await clients.db.exec(
+          DB.batch(
+            DB.update(DB.channels.doc(channelId), { predictionUpdate: prediction }),
+            DB.create(DB.predictions, prediction),
+          ),
+        );
+      } else if (eventType === 'channel.prediction.progress' || eventType === 'channel.prediction.lock') {
+        const outcomes = event.outcomes.map((item: any) : Partial<PredictionOutcome> => ({
+          channelPointUsers: item.users,
+          channelPoints: item.channel_points,
+        }));
+
+        await clients.db.exec(
+          DB.batch(
+            DB.update(DB.predictions.doc(event.id), { outcomes }),
+            DB.update(DB.channels.doc(channelId), { predictionUpdate: { id: event.id, outcomes } }),
+          ),
+        );
+      } else if (eventType === 'channel.prediction.end') {
+        const update = { winningOutcomeId: event.winning_outcome_id, status: event.status };
+        await clients.db.exec(
+          DB.batch(
+            DB.update(DB.predictions.doc(event.id), update),
+            DB.update(DB.channels.doc(channelId),
+              { predictionUpdate: { id: event.id, ...update } }),
+          ),
+        );
+
+        await clients.scheduler.schedule({
+          type: TaskType.PredictionEnd,
+          data: { predictionId: event.id },
+        });
       }
     },
   });

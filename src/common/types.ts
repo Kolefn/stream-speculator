@@ -50,45 +50,36 @@ export type StreamMetricPoint = {
   timestamp: Seconds;
 };
 
-export enum PredictionWindow {
-  HalfMinute = 30,
-  Minute = 60,
-  FiveMinute = 300,
-  TenMinute = 600,
-  ThirtyMinute = 1800,
-  Hour = 3600,
-}
-
-export enum PredictionPosition {
-  Above = 1,
-  Below = 2,
-  Equal = 3,
-}
-
-export type PredictionBase = {
-  channelId: string;
-  metric: StreamMetricType;
-  threshold: number;
-  position: PredictionPosition;
-  window: PredictionWindow;
-  multiplier: number;
-};
-
-export type PredictionRequest = PredictionBase;
-
-export type Prediction = PredictionBase & {
-  id: string;
-  userId: string;
-  wager: number;
-  maxReturn: number;
-  maxReturnMetricVal: number;
-  maxLossMetricVal: number;
-  startMetricVal: number;
-  createdAt: UnixEpochTime;
-  endMetricVal?: number;
-};
-
 export type User = {
   id: string;
+  coins: number;
+};
+
+export type PredictionOutcome = {
+  id: string;
+  title: string;
+  color: string;
+  channelPointUsers: number;
+  channelPoints: number;
+  coinUsers: number;
+  coins: number;
+};
+
+export type Prediction = {
+  id: string;
+  channelId: string;
+  title: string;
+  outcomes: PredictionOutcome[];
+  winningOutcomeId?: string;
+  status?: string;
+  startedAt: UnixEpochTime;
+  locksAt: UnixEpochTime;
+};
+
+export type Bet = {
+  id: string;
+  userId: string;
+  predictionId: string;
+  outcomeId: string;
   coins: number;
 };

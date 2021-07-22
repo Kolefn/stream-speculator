@@ -2,9 +2,12 @@
 import { checkSchema } from 'express-validator';
 import DB, { FaunaDoc, FaunaPage } from '../../common/DBClient';
 import {
-  Prediction, PredictionWindow,
-  PredictionPosition, PredictionRequest,
-  StreamMetricPoint, StreamMetricType, StreamMetric,
+  Prediction,
+  StreamMetricPoint,
+  StreamMetricType,
+  StreamMetric,
+  PredictionOutcome,
+  Bet,
 } from '../../common/types';
 import Scheduler, { ScheduledTask, TaskType } from '../Scheduler';
 import {
@@ -21,6 +24,7 @@ import InsufficientFundsError from '../errors/InsufficientFundsError';
 import NotFoundError from '../errors/NotFoundError';
 
 const POINT_HISTORY_BUFFER_SECONDS = 180; // to avoid missing data at beginning of window
+const CHANNEL_POINTS_TO_COINS_RATIO = 1;
 
 export const predictionRequestValidator = checkSchema({
   channelId: {
@@ -144,4 +148,51 @@ export const handleTaskProcessPrediction = async (
       ) : predictionUpdate,
     );
   }
+};
+
+export const handleTaskPredictionEnd = async (data: { predictionId: string }, db: DB) => {
+  const { predictionId } = data;
+  const { status, outcomes, winningOutcomeId } = DB.deRef<Prediction>(
+    await db.exec(DB.get(DB.predictions.doc(predictionId))),
+  );
+
+  const payoutRatios: { [key:string]: number } = {};
+  if (status === 'resolved') {
+    const winningOutcome = outcomes.find(
+      (item: any) => item.id === winningOutcomeId,
+    );
+    if (!winningOutcome || !winningOutcomeId) {
+      throw new Error(`Winning outcome not found for: ${winningOutcomeId}`);
+    }
+    const earningRatio = (outcomes
+      .filter((item: PredictionOutcome) => item.id !== winningOutcomeId)
+      .reduce((sum: number, item: PredictionOutcome) => item.channelPoints + sum, 0)
+    / winningOutcome.channelPoints) * CHANNEL_POINTS_TO_COINS_RATIO;
+
+    outcomes.forEach((item) => {
+      payoutRatios[item.id] = 0;
+    });
+
+    payoutRatios[winningOutcomeId] = 1 + earningRatio;
+  } else {
+    // refund
+    outcomes.forEach((item) => {
+      payoutRatios[item.id] = 1;
+    });
+  }
+
+  db.forEachPage<FaunaDoc>(
+    DB.bets.withRefsTo([{ collection: DB.predictions, id: predictionId }]),
+    (page) => db.exec(
+      DB.batch(
+        ...DB.deRefPage<Bet>(page)
+          .filter((bet) => payoutRatios[bet.outcomeId] > 0)
+          .map((bet) => DB.updateUserCoins(
+            bet.userId,
+            Math.floor(bet.coins * payoutRatios[bet.outcomeId]),
+          )),
+      ),
+    ),
+    { size: 250 },
+  );
 };
