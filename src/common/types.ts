@@ -24,6 +24,7 @@ export type TwitchChannel = {
   userName: string;
   isLive: boolean;
   stream?: TwitchStream;
+  predictionUpdate?: Partial<Prediction>;
 };
 
 export type TwitchChannelPageData = {

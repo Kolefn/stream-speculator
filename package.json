@@ -17,7 +17,6 @@
   "license": "MIT",
   "dependencies": {
     "@vendia/serverless-express": "^4.3.8",
-    "chart.js": "^3.4.1",
     "cookie-parser": "^1.4.5",
     "express": "^4.17.1",
     "express-validator": "^6.12.0",
@@ -25,7 +24,6 @@
     "mobx": "^6.3.2",
     "mobx-react-lite": "^3.2.0",
     "react": "^17.0.2",
-    "react-chartjs-2": "^3.0.3",
     "react-dom": "^17.0.2",
     "react-router-dom": "^5.2.0",
     "twitch": "^4.6.1",

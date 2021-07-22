@@ -9,7 +9,7 @@ export default <T>(docRef?: Expr) : [T | null, Error | null] => {
     if (client && docRef) {
       const unsub = client.onChange(docRef, (latest) => {
         setData(latest.document.data as T);
-      });
+      }, { includeSnapshot: true });
       return () => unsub();
     }
     return undefined;

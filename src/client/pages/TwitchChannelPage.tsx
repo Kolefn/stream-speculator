@@ -1,13 +1,14 @@
 import React, { useCallback } from 'react';
-import { Line as LineChart } from 'react-chartjs-2';
 import { observer } from 'mobx-react-lite';
 import usePageTitle from '../hooks/usePageTitle';
 import usePathnamePage from '../hooks/usePathnamePage';
 import useRequest from '../hooks/useRequest';
-import { getTwitchChannelPageData, predict } from '../api/endpoints';
-import { PredictionPosition, PredictionWindow, StreamMetricType } from '../../common/types';
+import { getTwitchChannelPageData } from '../api/endpoints';
+import { StreamMetricType } from '../../common/types';
 import useStreamMetric from '../hooks/useStreamMetric';
 import Header from '../components/Header';
+import PredictionCard from '../components/PredictionCard';
+import usePredictions from '../hooks/usePredictions';
 
 const TwitchChannelPage = observer(() => {
   const channelName = usePathnamePage();
@@ -20,8 +21,10 @@ const TwitchChannelPage = observer(() => {
     pageData?.channel.id,
     pageData?.metrics?.viewerCount,
   );
+  const [predictions] = usePredictions(pageData?.channel.id, pageData?.predictions);
   const currentViewerCount = viewerCounts.length > 0
     ? viewerCounts[viewerCounts.length - 1].value : 0;
+
   return (
     <div>
       <Header />
@@ -34,64 +37,9 @@ const TwitchChannelPage = observer(() => {
         Viewers:
         {currentViewerCount}
       </h3>
-      <LineChart
-        type="line"
-        width={500}
-        height={400}
-        data={{
-          labels: viewerCounts.map((_, i) => i.toString()),
-          datasets: [{
-            data: viewerCounts,
-          }],
-        }}
-        options={{
-          animation: false,
-          parsing: {
-            yAxisKey: 'value',
-            xAxisKey: 'timestamp',
-          },
-          plugins: {
-            title: {
-              display: false,
-            },
-            legend: { display: false },
-          },
-          scales: {
-            x: {
-              display: false,
-            },
-            y: {
-              display: false,
-            },
-          },
-        }}
-      />
-      <button
-        type="button"
-        onClick={() => predict({
-          metric: StreamMetricType.ViewerCount,
-          multiplier: 1,
-          window: PredictionWindow.Minute,
-          threshold: currentViewerCount,
-          position: PredictionPosition.Above,
-          channelId: pageData?.channel.id as string,
-        })}
-      >
-        UP
-      </button>
-      <button
-        type="button"
-        onClick={() => predict({
-          metric: StreamMetricType.ViewerCount,
-          multiplier: 1,
-          window: PredictionWindow.Minute,
-          threshold: currentViewerCount,
-          position: PredictionPosition.Below,
-          channelId: pageData?.channel.id as string,
-        })}
-      >
-        DOWN
-      </button>
+      {
+        predictions.map((p) => <PredictionCard key={p.id} prediction={p} />)
+      }
     </div>
   );
 });
