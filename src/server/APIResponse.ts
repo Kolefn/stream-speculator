@@ -13,13 +13,12 @@ export type APIResponseOptions<T extends {}> = {
   data?: T;
   cookies: Cookie[];
   contentType?: string;
-  onSend?: () => Promise<void>,
 };
 
 export default class APIResponse<T extends {}> {
   static EmptyOk = new APIResponse();
 
-  static send<T>(options: Partial<APIResponseOptions<T>>, res: Response) : Promise<void> {
+  static send<T>(options: Partial<APIResponseOptions<T>>, res: Response) : void {
     return new APIResponse(options).send(res);
   }
 
@@ -34,7 +33,7 @@ export default class APIResponse<T extends {}> {
     };
   }
 
-  async send(res: Response) : Promise<void> {
+  send(res: Response) : void {
     res.status(this.options.status);
     res.contentType(this.options.contentType as string);
     if (this.options.cookies.length > 0) {
@@ -46,13 +45,6 @@ export default class APIResponse<T extends {}> {
       res.json(this.options.data ?? {});
     } else {
       res.send(this.options.data);
-    }
-    if (this.options.onSend) {
-      try {
-        await this.options.onSend();
-      } catch (e) {
-        console.error(e);
-      }
     }
   }
 }

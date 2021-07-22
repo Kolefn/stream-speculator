@@ -75,6 +75,7 @@ export type Prediction = {
   status?: string;
   startedAt: UnixEpochTime;
   locksAt: UnixEpochTime;
+  endedAt?: UnixEpochTime;
 };
 
 export type Bet = {

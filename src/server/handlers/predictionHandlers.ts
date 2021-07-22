@@ -11,6 +11,12 @@ import {
 import UnAuthorizedError from '../errors/UnAuthorizedError';
 import { AuthSession } from './authHandlers';
 
+type PredictionEvent = {
+  type: 'channel.prediction.begin' | 'channel.prediction.progress'
+  | 'channel.prediction.lock' | 'channel.prediction.end',
+  prediction: Prediction;
+};
+
 export const betRequestValidator = checkSchema({
   coins: {
     in: 'body',
@@ -60,52 +66,90 @@ export const handleBet = async (
   return { ...request, userId: session.userId, id: result.ref.id };
 };
 
-export const handleTaskPredictionEnd = async (data: { predictionId: string }, db: DB) => {
-  const { predictionId } = data;
-  const { status, outcomes, winningOutcomeId } = DB.deRef<Prediction>(
-    await db.exec(DB.get(DB.predictions.doc(predictionId))),
-  );
-
-  const payoutRatios: { [key:string]: number } = {};
-  if (status === 'resolved') {
-    const winningOutcome = outcomes.find(
-      (item: any) => item.id === winningOutcomeId,
+export const handleTaskPredictionEvent = async (event: PredictionEvent, db: DB) => {
+  if (event.type === 'channel.prediction.begin') {
+    await db.exec(
+      DB.batch(
+        DB.update(
+          DB.channels.doc(event.prediction.channelId),
+          { predictionUpdate: event.prediction },
+        ),
+        DB.create(DB.predictions, event.prediction, DB.fromNow(1, 'days')),
+      ),
     );
-    if (!winningOutcome || !winningOutcomeId) {
-      throw new Error(`Winning outcome not found for: ${winningOutcomeId}`);
+  } else if (event.type === 'channel.prediction.progress' || event.type === 'channel.prediction.lock') {
+    const outcomes = event.prediction.outcomes.map(
+      (item: PredictionOutcome) : Partial<PredictionOutcome> => ({
+        channelPointUsers: item.channelPointUsers,
+        channelPoints: item.channelPoints,
+      }),
+    );
+
+    await db.exec(
+      DB.batch(
+        DB.update(DB.predictions.doc(event.prediction.id), { outcomes }),
+        DB.update(DB.channels.doc(event.prediction.channelId),
+          { predictionUpdate: { id: event.prediction.id, outcomes } }),
+      ),
+    );
+  } else if (event.type === 'channel.prediction.end') {
+    const update = {
+      winningOutcomeId: event.prediction.winningOutcomeId,
+      status: event.prediction.status,
+    };
+
+    const predictionId = event.prediction.id;
+    const { status, outcomes, winningOutcomeId } = DB.deRef<Prediction>(
+      await db.exec<FaunaDoc>(
+        DB.batch(
+          DB.update(DB.channels.doc(event.prediction.channelId),
+            { predictionUpdate: { id: event.prediction.id, ...update } }),
+          DB.update(DB.predictions.doc(event.prediction.id), update),
+        ),
+      ),
+    );
+
+    const payoutRatios: { [key:string]: number } = {};
+    if (status === 'resolved') {
+      const winningOutcome = outcomes.find(
+        (item: any) => item.id === winningOutcomeId,
+      );
+      if (!winningOutcome || !winningOutcomeId) {
+        throw new Error(`Winning outcome not found for: ${winningOutcomeId}`);
+      }
+
+      const winningOutcomePool = channelPointsToCoins(winningOutcome.channelPoints)
+      + winningOutcome.coins;
+      const losingOutcomesPool = outcomes
+        .filter((item: PredictionOutcome) => item.id !== winningOutcomeId)
+        .map((item: PredictionOutcome) => channelPointsToCoins(item.channelPoints) + item.coins)
+        .reduce((sum: number, coins: number) => coins + sum, 0);
+
+      outcomes.forEach((item) => {
+        payoutRatios[item.id] = 0;
+      });
+
+      payoutRatios[winningOutcomeId] = 1 + (losingOutcomesPool / winningOutcomePool);
+    } else {
+      // refund
+      outcomes.forEach((item) => {
+        payoutRatios[item.id] = 1;
+      });
     }
 
-    const winningOutcomePool = channelPointsToCoins(winningOutcome.channelPoints)
-    + winningOutcome.coins;
-    const losingOutcomesPool = outcomes
-      .filter((item: PredictionOutcome) => item.id !== winningOutcomeId)
-      .map((item: PredictionOutcome) => channelPointsToCoins(item.channelPoints) + item.coins)
-      .reduce((sum: number, coins: number) => coins + sum, 0);
-
-    outcomes.forEach((item) => {
-      payoutRatios[item.id] = 0;
-    });
-
-    payoutRatios[winningOutcomeId] = 1 + (losingOutcomesPool / winningOutcomePool);
-  } else {
-    // refund
-    outcomes.forEach((item) => {
-      payoutRatios[item.id] = 1;
-    });
-  }
-
-  db.forEachPage<FaunaDoc>(
-    DB.bets.withRefsTo([{ collection: DB.predictions, id: predictionId }]),
-    (page) => db.exec(
-      DB.batch(
-        ...DB.deRefPage<Bet>(page)
-          .filter((bet) => payoutRatios[bet.outcomeId] > 0)
-          .map((bet) => DB.updateUserCoins(
-            bet.userId,
-            Math.floor(bet.coins * payoutRatios[bet.outcomeId]),
-          )),
+    await db.forEachPage<FaunaDoc>(
+      DB.bets.withRefsTo([{ collection: DB.predictions, id: predictionId }]),
+      (page) => db.exec(
+        DB.batch(
+          ...DB.deRefPage<Bet>(page)
+            .filter((bet) => payoutRatios[bet.outcomeId] > 0)
+            .map((bet) => DB.updateUserCoins(
+              bet.userId,
+              Math.floor(bet.coins * payoutRatios[bet.outcomeId]),
+            )),
+        ),
       ),
-    ),
-    { size: 250 },
-  );
+      { size: 250 },
+    );
+  }
 };

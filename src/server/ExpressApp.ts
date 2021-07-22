@@ -31,14 +31,14 @@ const buildHandler = <T>(responder: (req:Request, res:Response) => Promise<{} | 
       try {
         const errors = validationResult(req);
         if (!errors.isEmpty()) {
-          await APIResponse.send({ status: 400, data: { errors: errors.array() } }, res);
+          APIResponse.send({ status: 400, data: { errors: errors.array() } }, res);
           return;
         }
         const response = await responder(req, res);
         if (response instanceof APIResponse) {
-          await response.send(res);
+          response.send(res);
         } else {
-          await APIResponse.send({ data: response }, res);
+          APIResponse.send({ data: response }, res);
         }
       } catch (e) {
         console.error(e);

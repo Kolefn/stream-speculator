@@ -37,6 +37,17 @@ interface EventSubNotificationBody extends BaseEventSubBody {
   event: { [key: string] : any };
 }
 
+type StreamEvent = {
+  type: 'stream.online' | 'stream.offline';
+  channelId: string;
+};
+
+type StreamOnlineEvent = StreamEvent & {
+  type: 'stream.online';
+  streamId: string;
+  startedAt: string;
+};
+
 export const getTwitchChannelPageData = async (params:
 {
   channelName: string,
@@ -109,21 +120,19 @@ export const getTwitchChannelPageData = async (params:
       ),
     );
 
+    if (result.created) {
+      await params.scheduler.scheduleBatch([
+        {
+          type: TaskType.MonitorChannel,
+          data: { channelId: stream.userId },
+        },
+        StreamMonitoringInitialTask,
+      ]);
+    }
+
     return new APIResponse({
       status: 200,
       data: { channel: DB.deRef<TwitchChannel>(result.doc) },
-      onSend: async () => {
-        if (!result.created) {
-          return;
-        }
-        await params.scheduler.scheduleBatch([
-          {
-            type: TaskType.MonitorChannel,
-            data: { channelId: stream.userId },
-          },
-          StreamMonitoringInitialTask,
-        ]);
-      },
     });
   }
 };
@@ -153,119 +162,63 @@ export const handleTwitchWebhook = async (headers: IncomingHttpHeaders, rawBody:
 
   if (type === 'webhook_callback_verification') {
     const verificationBody = body as EventSubVerificationBody;
+    await clients.db.exec(DB.create(DB.webhookSubs,
+      {
+        _id: verificationBody.subscription.id,
+        type: verificationBody.subscription.type,
+        channelId: verificationBody.subscription.condition.broadcaster_user_id,
+      }));
     return new APIResponse({
       status: 200,
       data: verificationBody.challenge,
       contentType: 'plain/text',
-      onSend: async () => {
-        await clients.db.exec(DB.create(DB.webhookSubs,
-          {
-            _id: verificationBody.subscription.id,
-            type: verificationBody.subscription.type,
-            channelId: verificationBody.subscription.condition.broadcaster_user_id,
-          }));
+    });
+  }
+
+  if (type !== 'notification') {
+    return APIResponse.EmptyOk;
+  }
+
+  const notificationBody = body as EventSubNotificationBody;
+  const { event } = notificationBody;
+  const eventType = notificationBody.subscription.type;
+  const channelId = event.broadcaster_user_id;
+
+  if (eventType === 'stream.online' || eventType === 'stream.offline') {
+    await clients.scheduler.schedule({
+      type: TaskType.StreamEvent,
+      data: {
+        type: eventType, channelId, startedAt: event.started_at, streamId: event.id,
       },
+    });
+  } else if (eventType.indexOf('channel.prediction.') > -1) {
+    const prediction: Prediction = {
+      id: event.id,
+      channelId: event.broadcaster_user_id,
+      title: event.title,
+      outcomes: event.outcomes.map((item: any) : PredictionOutcome => ({
+        id: item.id,
+        title: item.title,
+        color: item.color,
+        channelPointUsers: item.users ?? 0,
+        channelPoints: item.channel_points ?? 0,
+        coins: 0,
+        coinUsers: 0,
+      })),
+      status: event.status,
+      winningOutcomeId: event.winning_outcome_id,
+      startedAt: new Date(event.started_at).getTime(),
+      locksAt: new Date(event.locks_at).getTime(),
+      endedAt: event.ended_at ? new Date(event.ended_at).getTime() : undefined,
+    };
+    await clients.scheduler.schedule({
+      type: TaskType.PredictionEvent,
+      data: { type: eventType, prediction },
     });
   }
 
   return new APIResponse({
     status: 200,
-    onSend: async () => {
-      if (type !== 'notification') {
-        return;
-      }
-
-      const notificationBody = body as EventSubNotificationBody;
-      const { event } = notificationBody;
-      const eventType = notificationBody.subscription.type;
-      const channelId = event.broadcaster_user_id;
-
-      if (eventType === 'stream.online') {
-        const update = {
-          isLive: true,
-          stream: {
-            id: event.id,
-            startedAt: new Date(event.started_at).getTime(),
-            viewerCount: 0,
-          },
-        };
-        await clients.db.exec(DB.update(DB.channels.doc(channelId), update));
-        await clients.scheduler.schedule(StreamMonitoringInitialTask);
-        await clients.twitch.subToPredictionEvents(channelId);
-      } else if (eventType === 'stream.offline') {
-        await clients.db.exec(
-          DB.batch(
-            DB.update(DB.scheduledTasks.doc(TaskType.MonitorStreams.toString()),
-              { streamsChanged: true }),
-            DB.update(DB.channels.doc(channelId), { isLive: false }),
-          ),
-        );
-        const page = await clients.db.exec<FaunaPage<FaunaDoc>>(
-          DB.firstPage(DB.webhookSubs.withRefsTo([{ collection: DB.channels, id: channelId }])),
-        );
-        const docsToDelete = page.data
-          .filter((doc) => doc.data.type !== 'stream.online' && doc.data.type !== 'stream.offline');
-
-        await clients.twitch.deleteSubs(
-          docsToDelete.map(({ data: { _id } }) => _id),
-        );
-
-        await clients.db.exec(
-          DB.batch(
-            ...docsToDelete.map((doc) => DB.delete(DB.webhookSubs.doc(doc.ref.id))),
-          ),
-        );
-      } else if (eventType === 'channel.prediction.begin') {
-        const prediction: Prediction = {
-          id: event.id,
-          channelId: event.broadcaster_user_id,
-          title: event.title,
-          outcomes: event.outcomes.map((item: any) : PredictionOutcome => ({
-            id: item.id,
-            title: item.title,
-            color: item.color,
-            channelPointUsers: 0,
-            channelPoints: 0,
-            coins: 0,
-            coinUsers: 0,
-          })),
-          startedAt: new Date(event.started_at).getTime(),
-          locksAt: new Date(event.locks_at).getTime(),
-        };
-        await clients.db.exec(
-          DB.batch(
-            DB.update(DB.channels.doc(channelId), { predictionUpdate: prediction }),
-            DB.create(DB.predictions, prediction, DB.fromNow(1, 'days')),
-          ),
-        );
-      } else if (eventType === 'channel.prediction.progress' || eventType === 'channel.prediction.lock') {
-        const outcomes = event.outcomes.map((item: any) : Partial<PredictionOutcome> => ({
-          channelPointUsers: item.users,
-          channelPoints: item.channel_points,
-        }));
-
-        await clients.db.exec(
-          DB.batch(
-            DB.update(DB.predictions.doc(event.id), { outcomes }),
-            DB.update(DB.channels.doc(channelId), { predictionUpdate: { id: event.id, outcomes } }),
-          ),
-        );
-      } else if (eventType === 'channel.prediction.end') {
-        const update = { winningOutcomeId: event.winning_outcome_id, status: event.status };
-        await clients.db.exec(
-          DB.batch(
-            DB.update(DB.predictions.doc(event.id), update),
-            DB.update(DB.channels.doc(channelId),
-              { predictionUpdate: { id: event.id, ...update } }),
-          ),
-        );
-
-        await clients.scheduler.schedule({
-          type: TaskType.PredictionEnd,
-          data: { predictionId: event.id },
-        });
-      }
-    },
   });
 };
 
@@ -317,4 +270,49 @@ export const handleTaskGetRealTimeStreamMetrics = async (
     const update = updates[channelId];
     return DB.update(DB.streamMetric(update.channelId, update.type), update);
   })));
+};
+
+export const handleTaskStreamEvent = async (
+  event: StreamEvent,
+  scheduler: Scheduler,
+  db: DB,
+  twitch: TwitchClient,
+) => {
+  if (event.type === 'stream.online') {
+    const onlineEvent = (event as StreamOnlineEvent);
+    const update = {
+      isLive: true,
+      stream: {
+        id: onlineEvent.streamId,
+        startedAt: new Date(onlineEvent.startedAt).getTime(),
+        viewerCount: 0,
+      },
+    };
+    await db.exec(DB.update(DB.channels.doc(event.channelId), update));
+    await scheduler.schedule(StreamMonitoringInitialTask);
+    await twitch.subToPredictionEvents(event.channelId);
+  } else if (event.type === 'stream.offline') {
+    await db.exec(
+      DB.batch(
+        DB.update(DB.scheduledTasks.doc(TaskType.MonitorStreams.toString()),
+          { streamsChanged: true }),
+        DB.update(DB.channels.doc(event.channelId), { isLive: false }),
+      ),
+    );
+    const page = await db.exec<FaunaPage<FaunaDoc>>(
+      DB.firstPage(DB.webhookSubs.withRefsTo([{ collection: DB.channels, id: event.channelId }])),
+    );
+    const docsToDelete = page.data
+      .filter((doc) => doc.data.type !== 'stream.online' && doc.data.type !== 'stream.offline');
+
+    await twitch.deleteSubs(
+      docsToDelete.map(({ data: { _id } }) => _id),
+    );
+
+    await db.exec(
+      DB.batch(
+        ...docsToDelete.map((doc) => DB.delete(DB.webhookSubs.doc(doc.ref.id))),
+      ),
+    );
+  }
 };

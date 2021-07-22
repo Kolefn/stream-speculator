@@ -1,11 +1,12 @@
 import DB from '../../common/DBClient';
 import Scheduler, { ScheduledTask, TaskType } from '../Scheduler';
 import TwitchClient from '../TwitchClient';
-import { handleTaskPredictionEnd } from './predictionHandlers';
+import { handleTaskPredictionEvent } from './predictionHandlers';
 import {
   handleTaskMonitorChannel,
   handleTaskMonitorStreams,
   handleTaskGetRealTimeStreamMetrics,
+  handleTaskStreamEvent,
 } from './twitchHandlers';
 
 const db = new DB(process.env.FAUNADB_SECRET as string);
@@ -17,7 +18,8 @@ const routingTable: { [key:string]: (task:ScheduledTask) => Promise<void> } = {
   [TaskType.MonitorStreams]: (task) => handleTaskMonitorStreams(task, scheduler, db),
   [TaskType.GetRealTimeStreamMetrics]:
   (task) => handleTaskGetRealTimeStreamMetrics(task.data, twitch, db),
-  [TaskType.PredictionEnd]: (task) => handleTaskPredictionEnd(task.data, db),
+  [TaskType.PredictionEvent]: (task) => handleTaskPredictionEvent(task.data, db),
+  [TaskType.StreamEvent]: (task) => handleTaskStreamEvent(task.data, scheduler, db, twitch),
 };
 
 export default (event: any) => {
