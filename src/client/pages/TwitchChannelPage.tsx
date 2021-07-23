@@ -1,45 +1,56 @@
-import React, { useCallback } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { observer } from 'mobx-react-lite';
 import usePageTitle from '../hooks/usePageTitle';
 import usePathnamePage from '../hooks/usePathnamePage';
-import useRequest from '../hooks/useRequest';
-import { getTwitchChannelPageData } from '../api/endpoints';
-import { StreamMetricType } from '../../common/types';
-import useStreamMetric from '../hooks/useStreamMetric';
 import Header from '../components/Header';
 import PredictionCard from '../components/PredictionCard';
-import usePredictions from '../hooks/usePredictions';
+import { useChannelStore } from '../stores/channelStore';
+import { useUserStore } from '../stores/userStore';
 
 const TwitchChannelPage = observer(() => {
   const channelName = usePathnamePage();
   usePageTitle(`${channelName} - Twitch`);
-  const [pageData] = useRequest(
-    useCallback(() => getTwitchChannelPageData(channelName as string), [channelName]),
-  );
-  const [viewerCounts] = useStreamMetric(
-    StreamMetricType.ViewerCount,
-    pageData?.channel.id,
-    pageData?.metrics?.viewerCount,
-  );
-  const [predictions] = usePredictions(pageData?.channel.id, pageData?.predictions);
-  const currentViewerCount = viewerCounts.length > 0
-    ? viewerCounts[viewerCounts.length - 1].value : 0;
 
+  const channelStore = useChannelStore();
+
+  const userStore = useUserStore();
+
+  useEffect(() => {
+    if (channelName) {
+      channelStore.load(channelName);
+    }
+  }, [channelName]);
+
+  useEffect(() => {
+    if (userStore.dbClient && channelStore.channel) {
+      const unsubMetric = channelStore.listenToMetrics(userStore.dbClient);
+      const unsubPred = channelStore.listenToPredictions(userStore.dbClient);
+
+      return () => {
+        unsubMetric();
+        unsubPred();
+      };
+    }
+    return undefined;
+  }, [userStore.dbClient, channelStore.channel]);
+
+  const cards = useMemo(
+    () => channelStore.predictions.map((p) => <PredictionCard key={p.id} prediction={p} />),
+    [channelStore.predictions],
+  );
   return (
     <div>
       <Header />
       <h1>
         {channelName}
         {' - '}
-        {pageData?.channel.isLive ? 'Live' : 'Offline'}
+        {channelStore.channel?.isLive ? 'Live' : 'Offline'}
       </h1>
       <h3>
         Viewers:
-        {currentViewerCount}
+        {channelStore.currentViewerCount}
       </h3>
-      {
-        predictions.map((p) => <PredictionCard key={p.id} prediction={p} />)
-      }
+      {cards}
     </div>
   );
 });

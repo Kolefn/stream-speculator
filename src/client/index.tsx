@@ -7,6 +7,7 @@ import {
 } from 'react-router-dom';
 import HomePage from './pages/HomePage';
 import TwitchChannelPage from './pages/TwitchChannelPage';
+import { ChannelStore, ChannelStoreContext } from './stores/channelStore';
 import { UserStoreContext, UserStore, useUserStore } from './stores/userStore';
 
 const App = () => {
@@ -28,7 +29,9 @@ const App = () => {
 
 const AppWithContext = () => (
   <UserStoreContext.Provider value={new UserStore()}>
-    <App />
+    <ChannelStoreContext.Provider value={new ChannelStore()}>
+      <App />
+    </ChannelStoreContext.Provider>
   </UserStoreContext.Provider>
 );
 

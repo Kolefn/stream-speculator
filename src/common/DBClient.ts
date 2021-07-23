@@ -244,6 +244,10 @@ export default class DBClient {
     return q.Count(set);
   }
 
+  static merge(a: faunadb.ExprArg, b: faunadb.ExprArg) : faunadb.Expr {
+    return q.Merge(a, b);
+  }
+
   static delete(ref: faunadb.Expr) : faunadb.Expr {
     return q.Delete(ref);
   }
@@ -333,7 +337,7 @@ export default class DBClient {
     );
   }
 
-  static ifFieldGTE(ref: faunadb.Expr, field: string, value: faunadb.Expr, trueExpr: faunadb.Expr,
+  static ifFieldGTE(ref: faunadb.Expr, field: string, value: faunadb.ExprArg, trueExpr: faunadb.Expr,
     falseExpr: faunadb.Expr | null) {
     return q.If(
       q.Exists(ref),

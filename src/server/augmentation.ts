@@ -24,7 +24,7 @@ const DURATIONS: { [key: string] : PredictionDuration } = {
 const createPredictionId = ()
 : string => {
   const ts = Date.now() - PREDICTION_ID_EPOCH_MS;
-  const rand = parseInt(crypto.randomBytes(3).toString('hex'), 16);
+  const rand = parseInt(crypto.randomBytes(2).toString('hex'), 16);
   return `${ts}${rand}`;
 };
 

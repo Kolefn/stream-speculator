@@ -19,6 +19,13 @@ type PredictionEvent = {
   prediction: Prediction;
 };
 
+const NULL_PREDICTION = {
+  winningOutcomeId: null,
+  status: null,
+  endedAt: null,
+  augmentation: null,
+};
+
 export const betRequestValidator = checkSchema({
   coins: {
     in: 'body',
@@ -81,7 +88,7 @@ export const handleBet = async (
   const createBetAndUpdateCounters = DB.batch(
     DB.create(DB.bets, { ...request, userId: session.userId }, DB.fromNow(1, 'days')),
     DB.defineVars({
-      predictionUpdate: {
+      updatedPrediction: DB.update(DB.predictions.doc(request.predictionId), {
         id: request.predictionId,
         outcomes: {
           [request.outcomeId]: {
@@ -89,14 +96,10 @@ export const handleBet = async (
             coinUsers: incCoinUsersIfFirstBet,
           },
         },
-      },
-    },
-    DB.batch(
-      DB.update(DB.predictions.doc(request.predictionId), DB.useVar('predictionUpdate')),
-      DB.update(
-        DB.varSelect('fieldDoc', ['data', 'channelRef']),
-        { predictionUpdate: DB.useVar('predictionUpdate') },
-      ),
+      }),
+    }, DB.update(
+      DB.varSelect('fieldDoc', ['data', 'channelRef']),
+      { predictionUpdate: DB.merge(NULL_PREDICTION, DB.varSelect('updatedPrediction', ['data'])) },
     )),
   );
 
@@ -104,7 +107,7 @@ export const handleBet = async (
     DB.ifFieldGTE(
       DB.predictions.doc(request.predictionId),
       'locksAt',
-      DB.fromNow(1, 'seconds'),
+      Date.now() + 1000,
       DB.userCoinPurchase(
         session.userId,
         request.coins,
@@ -131,7 +134,12 @@ export const handleTaskPredictionEvent = async (
       DB.batch(
         DB.update(
           DB.channels.doc(event.prediction.channelId),
-          { predictionUpdate: event.prediction },
+          {
+            predictionUpdate: {
+              ...NULL_PREDICTION,
+              ...event.prediction,
+            },
+          },
         ),
         DB.create(DB.predictions, event.prediction, DB.fromNow(1, 'days')),
       ),
@@ -142,7 +150,7 @@ export const handleTaskPredictionEvent = async (
         type: TaskType.PredictionEvent,
         data: {
           type: 'lock',
-          data: event.prediction,
+          prediction: event.prediction,
         },
         when: [
           {
@@ -157,7 +165,7 @@ export const handleTaskPredictionEvent = async (
         type: TaskType.PredictionEvent,
         data: {
           type: 'end',
-          data: {
+          prediction: {
             ...event.prediction,
             winningOutcomeId: getWinningOutcomeId(
               event.prediction,
@@ -188,11 +196,13 @@ export const handleTaskPredictionEvent = async (
     );
 
     await db.exec(
-      DB.batch(
-        DB.update(DB.predictions.doc(event.prediction.id), { outcomes }),
-        DB.update(DB.channels.doc(event.prediction.channelId),
-          { predictionUpdate: { id: event.prediction.id, outcomes } }),
-      ),
+      DB.defineVars({
+        updatedPrediction: DB.update(DB.predictions.doc(event.prediction.id), { outcomes }),
+      },
+      DB.update(
+        DB.channels.doc(event.prediction.channelId),
+        { predictionUpdate: DB.merge(NULL_PREDICTION, DB.varSelect('updatedPrediction', ['data'])) },
+      )),
     );
   } else if (event.type === 'end') {
     const update = {
@@ -203,11 +213,16 @@ export const handleTaskPredictionEvent = async (
     const predictionId = event.prediction.id;
     const { status, outcomes, winningOutcomeId } = DB.deRef<Prediction>(
       await db.exec<FaunaDoc>(
+        DB.defineVars({
+          updatedPrediction: DB.update(DB.predictions.doc(event.prediction.id), update),
+        },
         DB.batch(
-          DB.update(DB.channels.doc(event.prediction.channelId),
-            { predictionUpdate: { id: event.prediction.id, ...update } }),
-          DB.update(DB.predictions.doc(event.prediction.id), update),
-        ),
+          DB.update(
+            DB.channels.doc(event.prediction.channelId),
+            { predictionUpdate: DB.merge(NULL_PREDICTION, DB.varSelect('updatedPrediction', ['data'])) },
+          ),
+          DB.varSelect('updatedPrediction', ['data']),
+        )),
       ),
     );
 
