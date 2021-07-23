@@ -84,11 +84,9 @@ export default class TwitchClient {
       channelId,
       EVENTSUB_OPTIONS,
     );
-    const predictionReq = this.subToPredictionEvents(channelId);
     return {
       onlineSub: await onlineReq,
       offlineSub: await offlineReq,
-      ...(await predictionReq),
     };
   }
 

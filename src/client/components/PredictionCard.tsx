@@ -20,7 +20,7 @@ export default (props: { prediction: Prediction }) => {
   return (
     <div>
       <h2>{prediction.title}</h2>
-      {prediction.outcomes.map(
+      {Object.values(prediction.outcomes).map(
         (outcome) => <OutcomeButton key={outcome.id} data={outcome} onClick={onClick} />,
       )}
     </div>

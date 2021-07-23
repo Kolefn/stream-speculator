@@ -66,16 +66,27 @@ export type PredictionOutcome = {
   coins: number;
 };
 
+export enum AugmentationType {
+  MoreLessEqual,
+  IncreaseTarget,
+}
+
+export type AugmentationDetails = {
+  type: AugmentationType,
+  data?: any;
+};
+
 export type Prediction = {
   id: string;
   channelId: string;
   title: string;
-  outcomes: PredictionOutcome[];
+  outcomes: { [id: string]: PredictionOutcome };
   winningOutcomeId?: string;
-  status?: string;
+  status?: 'resolved' | 'canceled';
   startedAt: UnixEpochTime;
   locksAt: UnixEpochTime;
   endedAt?: UnixEpochTime;
+  augmentation?: AugmentationDetails;
 };
 
 export type Bet = {

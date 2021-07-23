@@ -60,6 +60,16 @@ CreateIndex({
   ]
 })
 
+CreateIndex({
+  name: "Bets_by_predictionRef_outcomeRef_userRef",
+  source: Collection("Bets"),
+  terms: [
+    { field: ["data", "predictionRef"] },
+    { field: ["data", "outcomeRef"] },
+    { field: ["data", "userRef"] },
+  ]
+})
+
 CreateRole({
   name: "Guest",
   membership: [

@@ -29,7 +29,7 @@ export type ScheduledTask = {
 
 export const StreamMonitoringInitialTask: ScheduledTask = {
   type: TaskType.MonitorStreams,
-  when: [{ at: { second: 27 } }, { at: { second: 57 } }],
+  when: [{ at: { second: 25 } }, { at: { second: 55 } }],
   data: { streamsChanged: true },
   repeats: true,
 };

@@ -18,8 +18,8 @@ const routingTable: { [key:string]: (task:ScheduledTask) => Promise<void> } = {
   [TaskType.MonitorStreams]: (task) => handleTaskMonitorStreams(task, scheduler, db),
   [TaskType.GetRealTimeStreamMetrics]:
   (task) => handleTaskGetRealTimeStreamMetrics(task.data, twitch, db),
-  [TaskType.PredictionEvent]: (task) => handleTaskPredictionEvent(task.data, db),
-  [TaskType.StreamEvent]: (task) => handleTaskStreamEvent(task.data, scheduler, db, twitch),
+  [TaskType.PredictionEvent]: (task) => handleTaskPredictionEvent(task.data, db, scheduler),
+  [TaskType.StreamEvent]: (task) => handleTaskStreamEvent(task.data, scheduler, db),
 };
 
 export default (event: any) => {

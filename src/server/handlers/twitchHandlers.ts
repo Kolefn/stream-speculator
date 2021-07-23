@@ -14,6 +14,7 @@ import NotFoundError from '../errors/NotFoundError';
 import Scheduler, { ScheduledTask, StreamMonitoringInitialTask, TaskType } from '../Scheduler';
 import TwitchClient from '../TwitchClient';
 import APIResponse from '../APIResponse';
+import { createFirstPrediction } from '../augmentation';
 
 interface EventSubSubscriptionBody {
   id: string;
@@ -127,6 +128,17 @@ export const getTwitchChannelPageData = async (params:
           data: { channelId: stream.userId },
         },
         StreamMonitoringInitialTask,
+        {
+          type: TaskType.PredictionEvent,
+          data: {
+            type: 'begin',
+            prediction: createFirstPrediction(
+              stream.userId,
+              stream.viewers,
+              stream.startDate.getTime(),
+            ),
+          },
+        },
       ]);
     }
 
@@ -196,7 +208,7 @@ export const handleTwitchWebhook = async (headers: IncomingHttpHeaders, rawBody:
       id: event.id,
       channelId: event.broadcaster_user_id,
       title: event.title,
-      outcomes: event.outcomes.map((item: any) : PredictionOutcome => ({
+      outcomes: (event.outcomes as any[]).map((item: any) : PredictionOutcome => ({
         id: item.id,
         title: item.title,
         color: item.color,
@@ -204,7 +216,11 @@ export const handleTwitchWebhook = async (headers: IncomingHttpHeaders, rawBody:
         channelPoints: item.channel_points ?? 0,
         coins: 0,
         coinUsers: 0,
-      })),
+      })).reduce((a: { [key:string]: PredictionOutcome }, b) => {
+        // eslint-disable-next-line no-param-reassign
+        a[b.id] = b;
+        return a;
+      }, {}),
       status: event.status,
       winningOutcomeId: event.winning_outcome_id,
       startedAt: new Date(event.started_at).getTime(),
@@ -213,7 +229,7 @@ export const handleTwitchWebhook = async (headers: IncomingHttpHeaders, rawBody:
     };
     await clients.scheduler.schedule({
       type: TaskType.PredictionEvent,
-      data: { type: eventType, prediction },
+      data: { type: eventType.split('channel.prediction.')[1], prediction },
     });
   }
 
@@ -276,7 +292,6 @@ export const handleTaskStreamEvent = async (
   event: StreamEvent,
   scheduler: Scheduler,
   db: DB,
-  twitch: TwitchClient,
 ) => {
   if (event.type === 'stream.online') {
     const onlineEvent = (event as StreamOnlineEvent);
@@ -290,28 +305,12 @@ export const handleTaskStreamEvent = async (
     };
     await db.exec(DB.update(DB.channels.doc(event.channelId), update));
     await scheduler.schedule(StreamMonitoringInitialTask);
-    await twitch.subToPredictionEvents(event.channelId);
   } else if (event.type === 'stream.offline') {
     await db.exec(
       DB.batch(
         DB.update(DB.scheduledTasks.doc(TaskType.MonitorStreams.toString()),
           { streamsChanged: true }),
         DB.update(DB.channels.doc(event.channelId), { isLive: false }),
-      ),
-    );
-    const page = await db.exec<FaunaPage<FaunaDoc>>(
-      DB.firstPage(DB.webhookSubs.withRefsTo([{ collection: DB.channels, id: event.channelId }])),
-    );
-    const docsToDelete = page.data
-      .filter((doc) => doc.data.type !== 'stream.online' && doc.data.type !== 'stream.offline');
-
-    await twitch.deleteSubs(
-      docsToDelete.map(({ data: { _id } }) => _id),
-    );
-
-    await db.exec(
-      DB.batch(
-        ...docsToDelete.map((doc) => DB.delete(DB.webhookSubs.doc(doc.ref.id))),
       ),
     );
   }

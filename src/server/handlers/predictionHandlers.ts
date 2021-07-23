@@ -7,13 +7,15 @@ import {
   PredictionOutcome,
   Bet,
   BetRequest,
+  StreamMetricType,
 } from '../../common/types';
+import { getWinningOutcomeId } from '../augmentation';
 import UnAuthorizedError from '../errors/UnAuthorizedError';
+import Scheduler, { TaskType } from '../Scheduler';
 import { AuthSession } from './authHandlers';
 
 type PredictionEvent = {
-  type: 'channel.prediction.begin' | 'channel.prediction.progress'
-  | 'channel.prediction.lock' | 'channel.prediction.end',
+  type: 'begin' | 'progress' | 'lock' | 'end',
   prediction: Prediction;
 };
 
@@ -46,14 +48,67 @@ export const handleBet = async (
     throw new UnAuthorizedError('Bet');
   }
 
+  // 'fieldDoc' var is created by ifFieldGTE below
+  const incOutcomeCoins = DB.add(
+    DB.varSelect('fieldDoc', ['data', 'outcomes', request.outcomeId, 'coins']),
+    request.coins,
+  );
+  const incCoinUsersIfFirstBet = DB.add(
+    DB.varSelect('fieldDoc', ['data', 'outcomes', request.outcomeId, 'coinUsers']),
+    DB.ifEqual(
+      DB.count(
+        DB.bets.withRefsTo([
+          {
+            collection: DB.predictions,
+            id: request.predictionId,
+          },
+          {
+            collection: DB.outcomes,
+            id: request.outcomeId,
+          },
+          {
+            collection: DB.users,
+            id: session.userId,
+          },
+        ]),
+      ),
+      1, // if created bet is first then add 1 to coinUsers
+      1,
+      0,
+    ),
+  );
+
+  const createBetAndUpdateCounters = DB.batch(
+    DB.create(DB.bets, { ...request, userId: session.userId }, DB.fromNow(1, 'days')),
+    DB.defineVars({
+      predictionUpdate: {
+        id: request.predictionId,
+        outcomes: {
+          [request.outcomeId]: {
+            coins: incOutcomeCoins,
+            coinUsers: incCoinUsersIfFirstBet,
+          },
+        },
+      },
+    },
+    DB.batch(
+      DB.update(DB.predictions.doc(request.predictionId), DB.useVar('predictionUpdate')),
+      DB.update(
+        DB.varSelect('fieldDoc', ['data', 'channelRef']),
+        { predictionUpdate: DB.useVar('predictionUpdate') },
+      ),
+    )),
+  );
+
   const result = await db.exec<FaunaDoc | null>(
     DB.ifFieldGTE(
       DB.predictions.doc(request.predictionId),
-      'locksAt', DB.fromNow(1, 'seconds'),
+      'locksAt',
+      DB.fromNow(1, 'seconds'),
       DB.userCoinPurchase(
         session.userId,
         request.coins,
-        DB.create(DB.bets, { ...request, userId: session.userId }, DB.fromNow(1, 'days')),
+        createBetAndUpdateCounters,
       ),
       null,
     ),
@@ -66,8 +121,12 @@ export const handleBet = async (
   return { ...request, userId: session.userId, id: result.ref.id };
 };
 
-export const handleTaskPredictionEvent = async (event: PredictionEvent, db: DB) => {
-  if (event.type === 'channel.prediction.begin') {
+export const handleTaskPredictionEvent = async (
+  event: PredictionEvent,
+  db: DB,
+  scheduler: Scheduler,
+) : Promise<void> => {
+  if (event.type === 'begin') {
     await db.exec(
       DB.batch(
         DB.update(
@@ -77,12 +136,55 @@ export const handleTaskPredictionEvent = async (event: PredictionEvent, db: DB) 
         DB.create(DB.predictions, event.prediction, DB.fromNow(1, 'days')),
       ),
     );
-  } else if (event.type === 'channel.prediction.progress' || event.type === 'channel.prediction.lock') {
-    const outcomes = event.prediction.outcomes.map(
-      (item: PredictionOutcome) : Partial<PredictionOutcome> => ({
-        channelPointUsers: item.channelPointUsers,
-        channelPoints: item.channelPoints,
-      }),
+
+    if (event.prediction.augmentation) {
+      await scheduler.schedule({
+        type: TaskType.PredictionEvent,
+        data: {
+          type: 'lock',
+          data: event.prediction,
+        },
+        when: [
+          {
+            timestamp: event.prediction.locksAt,
+          },
+        ],
+      });
+    }
+  } else if (event.type === 'progress' || event.type === 'lock') {
+    if (event.prediction.augmentation && event.type === 'lock') {
+      await scheduler.schedule({
+        type: TaskType.PredictionEvent,
+        data: {
+          type: 'end',
+          data: {
+            ...event.prediction,
+            winningOutcomeId: getWinningOutcomeId(
+              event.prediction,
+              await db.exec<number>(
+                DB.getField(
+                  DB.streamMetric(event.prediction.channelId, StreamMetricType.ViewerCount),
+                  'value',
+                ),
+              ),
+            ),
+            status: 'resolved',
+          },
+        },
+      });
+      return;
+    }
+
+    const outcomes: { [key:string]: Partial<PredictionOutcome> } = {};
+
+    Object.keys(event.prediction.outcomes).forEach(
+      (id: string) => {
+        const item = event.prediction.outcomes[id];
+        outcomes[id] = {
+          channelPointUsers: item.channelPointUsers,
+          channelPoints: item.channelPoints,
+        };
+      },
     );
 
     await db.exec(
@@ -92,7 +194,7 @@ export const handleTaskPredictionEvent = async (event: PredictionEvent, db: DB) 
           { predictionUpdate: { id: event.prediction.id, outcomes } }),
       ),
     );
-  } else if (event.type === 'channel.prediction.end') {
+  } else if (event.type === 'end') {
     const update = {
       winningOutcomeId: event.prediction.winningOutcomeId,
       status: event.prediction.status,
@@ -111,29 +213,27 @@ export const handleTaskPredictionEvent = async (event: PredictionEvent, db: DB) 
 
     const payoutRatios: { [key:string]: number } = {};
     if (status === 'resolved') {
-      const winningOutcome = outcomes.find(
-        (item: any) => item.id === winningOutcomeId,
-      );
-      if (!winningOutcome || !winningOutcomeId) {
+      if (!winningOutcomeId || !outcomes[winningOutcomeId]) {
         throw new Error(`Winning outcome not found for: ${winningOutcomeId}`);
       }
 
+      const winningOutcome = outcomes[winningOutcomeId];
       const winningOutcomePool = channelPointsToCoins(winningOutcome.channelPoints)
       + winningOutcome.coins;
-      const losingOutcomesPool = outcomes
+      const losingOutcomesPool = Object.values(outcomes)
         .filter((item: PredictionOutcome) => item.id !== winningOutcomeId)
         .map((item: PredictionOutcome) => channelPointsToCoins(item.channelPoints) + item.coins)
         .reduce((sum: number, coins: number) => coins + sum, 0);
 
-      outcomes.forEach((item) => {
-        payoutRatios[item.id] = 0;
+      Object.keys(outcomes).forEach((id) => {
+        payoutRatios[id] = 0;
       });
 
       payoutRatios[winningOutcomeId] = 1 + (losingOutcomesPool / winningOutcomePool);
     } else {
       // refund
-      outcomes.forEach((item) => {
-        payoutRatios[item.id] = 1;
+      Object.keys(outcomes).forEach((id) => {
+        payoutRatios[id] = 1;
       });
     }
 

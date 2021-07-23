@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import DBClient from '../../common/DBClient';
-import { Prediction, TwitchChannel } from '../../common/types';
+import { Prediction, PredictionOutcome, TwitchChannel } from '../../common/types';
 import useDBChangeListener from './useDBChangeListener';
 
 const updatePrediction = (
@@ -9,16 +9,15 @@ const updatePrediction = (
 ) : Prediction => ({
   ...prediction,
   ...update,
-  outcomes: update.outcomes ? prediction.outcomes.map((a) => {
-    const u = update.outcomes?.find((b) => b.id === a.id);
-    if (u) {
-      return {
-        ...a,
-        ...u,
-      };
-    }
-    return a;
-  }) : prediction.outcomes,
+  outcomes: update.outcomes ? Object.keys(prediction.outcomes).reduce((m: any, id) => {
+    // eslint-disable-next-line no-param-reassign
+    m[id] = {
+      ...prediction.outcomes[id],
+      ...((update.outcomes as any as { [key: string]: PredictionOutcome })[id] ?? {}),
+    };
+
+    return m;
+  }, {}) : prediction.outcomes,
 });
 
 export default (channelId?: string, initial?: Prediction[])

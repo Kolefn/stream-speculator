@@ -124,6 +124,14 @@ export default class DBClient {
     return q.Let(gets, sets);
   }
 
+  static useVar(varName: string) : faunadb.Expr {
+    return q.Var(varName);
+  }
+
+  static defineVars(vars: { [key: string] : faunadb.ExprArg }, usage: faunadb.Expr) : faunadb.Expr {
+    return q.Let(vars, usage);
+  }
+
   static get(expr: faunadb.Expr) : faunadb.Expr {
     return q.Get(expr);
   }
@@ -220,6 +228,22 @@ export default class DBClient {
     return q.Select(['ref'], q.Var(varName));
   }
 
+  static varSelect(varName: string, path: string[]) : faunadb.Expr {
+    return q.Select(path, q.Var(varName));
+  }
+
+  static getField(ref: faunadb.Expr, fieldName: string) : faunadb.Expr {
+    return q.Select(['data', fieldName], q.Get(ref));
+  }
+
+  static add(a: faunadb.ExprArg, b: faunadb.ExprArg) : faunadb.Expr {
+    return q.Add(a, b);
+  }
+
+  static count(set: faunadb.Expr) : faunadb.Expr {
+    return q.Count(set);
+  }
+
   static delete(ref: faunadb.Expr) : faunadb.Expr {
     return q.Delete(ref);
   }
@@ -312,10 +336,22 @@ export default class DBClient {
   static ifFieldGTE(ref: faunadb.Expr, field: string, value: faunadb.Expr, trueExpr: faunadb.Expr,
     falseExpr: faunadb.Expr | null) {
     return q.If(
-      q.And(q.Exists(ref), q.GTE(q.Select(['data', field], q.Get(ref)), value)),
-      trueExpr,
-      falseExpr,
+      q.Exists(ref),
+      q.Let({
+        fieldDoc: q.Get(ref),
+      },
+      q.If(
+        q.GTE(q.Select(['data', field], q.Var('fieldDoc')), value),
+        trueExpr,
+        falseExpr,
+      )),
+      null,
     );
+  }
+
+  static ifEqual(a: faunadb.ExprArg, b: faunadb.ExprArg, trueExpr: faunadb.ExprArg | null,
+    falseExpr: faunadb.ExprArg | null) : faunadb.Expr {
+    return q.If(q.Equals(a, b), trueExpr, falseExpr);
   }
 
   static firstPage(set: faunadb.Expr, size?: number) : faunadb.Expr {
