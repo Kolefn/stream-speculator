@@ -1,4 +1,5 @@
 import crypto from 'crypto';
+import { OUTCOME_COINS_MIN } from '../common/predictionUtils';
 import {
   AugmentationType, Milliseconds, Prediction, UnixEpochTime,
 } from '../common/types';
@@ -48,7 +49,7 @@ const moreLessEqualViewerCount = (
       title: `More than ${viewerCount}`,
       color: 'pink',
       coinUsers: 0,
-      coins: 0,
+      coins: OUTCOME_COINS_MIN,
       channelPointUsers: 0,
       channelPoints: 0,
     },
@@ -57,7 +58,7 @@ const moreLessEqualViewerCount = (
       title: `Less than ${viewerCount}`,
       color: 'blue',
       coinUsers: 0,
-      coins: 0,
+      coins: OUTCOME_COINS_MIN,
       channelPointUsers: 0,
       channelPoints: 0,
     },
@@ -66,7 +67,7 @@ const moreLessEqualViewerCount = (
       title: `Exactly ${viewerCount}`,
       color: 'green',
       coinUsers: 0,
-      coins: 0,
+      coins: OUTCOME_COINS_MIN,
       channelPointUsers: 0,
       channelPoints: 0,
     },
@@ -97,7 +98,7 @@ const increaseTargetViewerCount = (
         title: 'Yes',
         color: 'pink',
         coinUsers: 0,
-        coins: 0,
+        coins: OUTCOME_COINS_MIN,
         channelPointUsers: 0,
         channelPoints: 0,
       },
@@ -106,7 +107,7 @@ const increaseTargetViewerCount = (
         title: 'No',
         color: 'blue',
         coinUsers: 0,
-        coins: 0,
+        coins: OUTCOME_COINS_MIN,
         channelPointUsers: 0,
         channelPoints: 0,
       },

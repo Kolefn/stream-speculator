@@ -6,6 +6,7 @@ CreateCollection({name: "ScheduledTasks", history_days: 0 })
 CreateCollection({name: "Users", history_days: 0  })
 CreateCollection({name: "Predictions", history_days: 0 })
 CreateCollection({name: "Bets", history_days: 0 })
+CreateCollection({name: "Outcomes", history_days: 0 })
 
 CreateIndex({
   name: "Channels_by_userName",

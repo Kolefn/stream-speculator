@@ -25,7 +25,7 @@ class DBCollection {
       return field;
     });
 
-    const indexName = `${this.name}_by_${fields.join('_and_')}`;
+    const indexName = `${this.name}_by_${fields.join('_')}`;
 
     return q.Match(q.Index(indexName), ...refs.map((ref) => ref.collection.doc(ref.id)));
   }
@@ -337,8 +337,13 @@ export default class DBClient {
     );
   }
 
-  static ifFieldGTE(ref: faunadb.Expr, field: string, value: faunadb.ExprArg, trueExpr: faunadb.Expr,
-    falseExpr: faunadb.Expr | null) {
+  static ifFieldGTE(
+    ref: faunadb.Expr,
+    field: string,
+    value: faunadb.ExprArg,
+    trueExpr: faunadb.Expr,
+    falseExpr: faunadb.Expr | null,
+  ) {
     return q.If(
       q.Exists(ref),
       q.Let({
@@ -386,12 +391,15 @@ export default class DBClient {
   }
 
   async forEachPage<T>(set: faunadb.Expr, callback: (page: FaunaPage<T>) =>
-  Promise<void>, options?: { size?: number }) : Promise<void> {
+  Promise<void>, options?: { size?: number, getDocs?: boolean }) : Promise<void> {
     let page: FaunaPage<T> = { data: [] };
     do {
+      const paginate = q.Paginate(set, { after: page?.after, size: options?.size });
       // eslint-disable-next-line no-await-in-loop
       page = await this.client.query(
-        q.Paginate(set, { after: page?.after, ...(options ?? {}) }),
+        options?.getDocs
+          ? q.Map(paginate, q.Lambda('pageDocRef', q.Get(q.Var('pageDocRef'))))
+          : paginate,
       );
       // eslint-disable-next-line no-await-in-loop
       await callback(page);

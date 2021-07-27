@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect } from 'react';
 import { observer } from 'mobx-react-lite';
 import usePageTitle from '../hooks/usePageTitle';
 import usePathnamePage from '../hooks/usePathnamePage';
@@ -34,10 +34,6 @@ const TwitchChannelPage = observer(() => {
     return undefined;
   }, [userStore.dbClient, channelStore.channel]);
 
-  const cards = useMemo(
-    () => channelStore.predictions.map((p) => <PredictionCard key={p.id} prediction={p} />),
-    [channelStore.predictions],
-  );
   return (
     <div>
       <Header />
@@ -50,7 +46,7 @@ const TwitchChannelPage = observer(() => {
         Viewers:
         {channelStore.currentViewerCount}
       </h3>
-      {cards}
+      {channelStore.predictions.map((p) => <PredictionCard key={p.id} prediction={p} />)}
     </div>
   );
 });

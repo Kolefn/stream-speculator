@@ -1,7 +1,7 @@
 /* eslint-disable import/prefer-default-export */
 import { checkSchema } from 'express-validator/src/middlewares/schema';
 import DB, { FaunaDoc } from '../../common/DBClient';
-import { channelPointsToCoins, isValidBetAmount } from '../../common/predictionUtils';
+import { channelPointsToCoins, isValidBetAmount, OUTCOME_COINS_MIN } from '../../common/predictionUtils';
 import {
   Prediction,
   PredictionOutcome,
@@ -205,25 +205,24 @@ export const handleTaskPredictionEvent = async (
       )),
     );
   } else if (event.type === 'end') {
-    const update = {
+    const update: Partial<Prediction> = {
       winningOutcomeId: event.prediction.winningOutcomeId,
       status: event.prediction.status,
+      endedAt: Date.now(),
     };
 
     const predictionId = event.prediction.id;
-    const { status, outcomes, winningOutcomeId } = DB.deRef<Prediction>(
-      await db.exec<FaunaDoc>(
-        DB.defineVars({
-          updatedPrediction: DB.update(DB.predictions.doc(event.prediction.id), update),
-        },
-        DB.batch(
-          DB.update(
-            DB.channels.doc(event.prediction.channelId),
-            { predictionUpdate: DB.merge(NULL_PREDICTION, DB.varSelect('updatedPrediction', ['data'])) },
-          ),
-          DB.varSelect('updatedPrediction', ['data']),
-        )),
-      ),
+    const { status, outcomes, winningOutcomeId } = await db.exec<Prediction>(
+      DB.defineVars({
+        updatedPrediction: DB.update(DB.predictions.doc(event.prediction.id), update),
+      },
+      DB.batch(
+        DB.update(
+          DB.channels.doc(event.prediction.channelId),
+          { predictionUpdate: DB.merge(NULL_PREDICTION, DB.varSelect('updatedPrediction', ['data'])) },
+        ),
+        DB.varSelect('updatedPrediction', ['data']),
+      )),
     );
 
     const payoutRatios: { [key:string]: number } = {};
@@ -234,11 +233,16 @@ export const handleTaskPredictionEvent = async (
 
       const winningOutcome = outcomes[winningOutcomeId];
       const winningOutcomePool = channelPointsToCoins(winningOutcome.channelPoints)
-      + winningOutcome.coins;
+      + winningOutcome.coins - OUTCOME_COINS_MIN;
       const losingOutcomesPool = Object.values(outcomes)
         .filter((item: PredictionOutcome) => item.id !== winningOutcomeId)
         .map((item: PredictionOutcome) => channelPointsToCoins(item.channelPoints) + item.coins)
         .reduce((sum: number, coins: number) => coins + sum, 0);
+
+      // const participantCount = Object.values(outcomes).reduce(
+      //   (sum, outcome) => sum + outcome.coinUsers + outcome.channelPointUsers,
+      //   0,
+      // );
 
       Object.keys(outcomes).forEach((id) => {
         payoutRatios[id] = 0;
@@ -264,7 +268,7 @@ export const handleTaskPredictionEvent = async (
             )),
         ),
       ),
-      { size: 250 },
+      { size: 250, getDocs: true },
     );
   }
 };

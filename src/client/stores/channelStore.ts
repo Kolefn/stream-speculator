@@ -66,6 +66,7 @@ export class ChannelStore {
           this.viewerCount = fillPointGaps([...this.viewerCount, metric]);
         });
       },
+      { includeSnapshot: true },
     );
   }
 
@@ -73,16 +74,23 @@ export class ChannelStore {
     return dbClient?.onChange(
       DBClient.channels.doc(this.channel?.id ?? ''),
       (data) => {
-        const update = data.document.data as Prediction;
+        const update = (data.document.data as TwitchChannel).predictionUpdate as Prediction;
+        if (!update) {
+          return;
+        }
         runInAction(() => {
           const index = this.predictions.findIndex((p) => p.id === update.id);
           if (index > -1) {
-            this.predictions[index] = updatePrediction(this.predictions[index], update);
+            this.predictions[index] = updatePrediction(
+              this.predictions[index],
+              update,
+            );
           } else {
             this.predictions.unshift(update);
           }
         });
       },
+      { includeSnapshot: true },
     );
   }
 }
