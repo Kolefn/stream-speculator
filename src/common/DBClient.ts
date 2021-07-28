@@ -74,6 +74,7 @@ export type FaunaTokenDoc = {
 
 export type FaunaStreamData = {
   document: FaunaDoc;
+  action?: 'update' | 'delete',
 };
 
 export type FaunaDocEvent<T> = {
