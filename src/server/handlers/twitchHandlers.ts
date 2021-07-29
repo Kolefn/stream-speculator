@@ -304,14 +304,40 @@ export const handleTaskStreamEvent = async (
       },
     };
     await db.exec(DB.update(DB.channels.doc(event.channelId), update));
-    await scheduler.schedule(StreamMonitoringInitialTask);
+    await scheduler.scheduleBatch([
+      StreamMonitoringInitialTask,
+      {
+        type: TaskType.CreatePrediction,
+        data: {
+          channelId: event.channelId,
+        },
+        when: [
+          {
+            timestamp: Date.now() + 10 * 60 * 1000,
+          },
+        ],
+      },
+    ]);
   } else if (event.type === 'stream.offline') {
-    await db.exec(
+    const page = await db.exec<FaunaPage<FaunaDoc>>(
       DB.batch(
         DB.update(DB.scheduledTasks.doc(TaskType.MonitorStreams.toString()),
           { streamsChanged: true }),
         DB.update(DB.channels.doc(event.channelId), { isLive: false }),
+        DB.firstPage(DB.predictions.withRefsTo([{ collection: DB.channels, id: event.channelId }])),
       ),
     );
+
+    await scheduler.scheduleBatch(page.data.map((doc) => ({
+      type: TaskType.PredictionEvent,
+      data: {
+        type: 'end',
+        prediction: {
+          id: doc.ref.id,
+          winningOutcomeId: null,
+          status: 'canceled',
+        },
+      },
+    })));
   }
 };

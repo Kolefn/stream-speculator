@@ -229,8 +229,8 @@ export default class DBClient {
     return q.Select(['ref'], q.Var(varName));
   }
 
-  static varSelect(varName: string, path: string[]) : faunadb.Expr {
-    return q.Select(path, q.Var(varName));
+  static varSelect(varName: string, path: string[], fallback?: faunadb.ExprArg) : faunadb.Expr {
+    return q.Select(path, q.Var(varName), fallback);
   }
 
   static getField(ref: faunadb.Expr, fieldName: string) : faunadb.Expr {
@@ -317,7 +317,7 @@ export default class DBClient {
     ifTrue: faunadb.ExprArg | null, ifFalse: faunadb.ExprArg | null,
   ) : faunadb.Expr {
     return q.If(
-      q.Equals(q.Modulo(value, of), 0),
+      q.And(q.Not(q.Equals(value, 0)), q.Equals(q.Modulo(value, of), 0)),
       ifTrue,
       ifFalse,
     );
@@ -391,6 +391,11 @@ export default class DBClient {
   static ifEqual(a: faunadb.ExprArg, b: faunadb.ExprArg, trueExpr: faunadb.ExprArg | null,
     falseExpr: faunadb.ExprArg | null) : faunadb.Expr {
     return q.If(q.Equals(a, b), trueExpr, falseExpr);
+  }
+
+  static ifNull(a: faunadb.ExprArg, trueExpr: faunadb.ExprArg | null,
+    falseExpr: faunadb.ExprArg | null) : faunadb.Expr {
+    return q.If(q.IsNull(a), trueExpr, falseExpr);
   }
 
   static firstPage(set: faunadb.Expr, size?: number) : faunadb.Expr {

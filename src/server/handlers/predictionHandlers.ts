@@ -28,7 +28,7 @@ const NULL_PREDICTION = {
   augmentation: null,
 };
 
-const WINS_PER_BONUS = 50;
+const WINS_PER_BONUS = 2;
 const WIN_BONUS_COINS = 1000;
 
 export const betRequestValidator = checkSchema({
@@ -59,46 +59,40 @@ export const handleBet = async (
   if (!session) {
     throw new UnAuthorizedError('Bet');
   }
-
-  // 'fieldDoc' var is created by ifFieldGTE below
-  const incOutcomeCoins = DB.add(
-    DB.varSelect('fieldDoc', ['data', 'outcomes', request.outcomeId, 'coins']),
-    request.coins,
-  );
-  const incCoinUsersIfFirstBet = DB.add(
-    DB.varSelect('fieldDoc', ['data', 'outcomes', request.outcomeId, 'coinUsers']),
-    DB.ifEqual(
-      DB.count(
-        DB.bets.withRefsTo([
-          {
-            collection: DB.predictions,
-            id: request.predictionId,
-          },
-          {
-            collection: DB.outcomes,
-            id: request.outcomeId,
-          },
-          {
-            collection: DB.users,
-            id: session.userId,
-          },
-        ]),
-      ),
-      1, // if created bet is first then add 1 to coinUsers
-      1,
-      0,
+  const createBetAndUpdateCounters = DB.defineVars({
+    existingBet: DB.getIfMatch(DB.bets.withRefsTo([
+      {
+        collection: DB.predictions,
+        id: request.predictionId,
+      },
+      {
+        collection: DB.outcomes,
+        id: request.outcomeId,
+      },
+      {
+        collection: DB.users,
+        id: session.userId,
+      },
+    ])),
+    bet: DB.ifNull(
+      DB.useVar('existingBet'),
+      DB.create(DB.bets, { ...request, userId: session.userId }, DB.fromNow(1, 'days')),
+      DB.addToDocFields(DB.varSelect('existingBet', ['ref']), { coins: request.coins }),
     ),
-  );
-
-  const createBetAndUpdateCounters = DB.batch(
-    DB.create(DB.bets, { ...request, userId: session.userId }, DB.fromNow(1, 'days')),
+  }, DB.batch(
     DB.defineVars({
       updatedPrediction: DB.update(DB.predictions.doc(request.predictionId), {
         id: request.predictionId,
         outcomes: {
           [request.outcomeId]: {
-            coins: incOutcomeCoins,
-            coinUsers: incCoinUsersIfFirstBet,
+            coins: DB.add(
+              DB.varSelect('fieldDoc', ['data', 'outcomes', request.outcomeId, 'coins']),
+              request.coins,
+            ),
+            coinUsers: DB.add(
+              DB.varSelect('fieldDoc', ['data', 'outcomes', request.outcomeId, 'coinUsers']),
+              DB.ifNull(DB.useVar('existingBet'), 1, 0),
+            ),
           },
         },
       }),
@@ -106,7 +100,8 @@ export const handleBet = async (
       DB.varSelect('fieldDoc', ['data', 'channelRef']),
       { predictionUpdate: DB.merge(NULL_PREDICTION, DB.varSelect('updatedPrediction', ['data'])) },
     )),
-  );
+    DB.useVar('bet'),
+  ));
 
   const result = await db.exec<FaunaDoc | null>(
     DB.ifFieldGTE(
@@ -269,30 +264,36 @@ export const handleTaskPredictionEvent = async (
 
     await db.forEachPage<FaunaDoc>(
       DB.bets.withRefsTo([{ collection: DB.predictions, id: predictionId }]),
-      (page) => db.exec(
-        DB.batch(
-          ...DB.deRefPage<Bet>(page)
-            .filter((bet) => payoutRatios[bet.outcomeId] > 0)
-            .map((bet) => DB.addToDocFields(
-              DB.users.doc(bet.userId),
-              {
-                coins: DB.add(
-                  Math.floor(bet.coins * payoutRatios[bet.outcomeId]),
-                  DB.ifMultipleOf(
-                    DB.add(
-                      DB.varSelect('fieldsDoc', ['data', 'wins']),
-                      bet.outcomeId === winningOutcomeId ? 1 : 0,
-                    ),
-                    WINS_PER_BONUS,
-                    WIN_BONUS_COINS,
-                    0,
+      async (page) => {
+        const updates = DB.deRefPage<Bet>(page)
+          .filter((bet) => payoutRatios[bet.outcomeId] > 0)
+          .map((bet) => DB.addToDocFields(
+            DB.users.doc(bet.userId),
+            {
+              coins: DB.add(
+                Math.floor(bet.coins * payoutRatios[bet.outcomeId]),
+                DB.ifMultipleOf(
+                  DB.add(
+                    DB.varSelect('fieldsDoc', ['data', 'wins'], 0),
+                    bet.outcomeId === winningOutcomeId ? 1 : 0,
                   ),
+                  WINS_PER_BONUS,
+                  WIN_BONUS_COINS,
+                  0,
                 ),
-                wins: bet.outcomeId === winningOutcomeId ? 1 : 0,
-              },
-            )),
-        ),
-      ),
+              ),
+              wins: bet.outcomeId === winningOutcomeId ? 1 : 0,
+            },
+          ));
+        if (updates.length === 0) {
+          return;
+        }
+        await db.exec(
+          DB.batch(
+            ...updates,
+          ),
+        );
+      },
       { size: 250, getDocs: true },
     );
   }
