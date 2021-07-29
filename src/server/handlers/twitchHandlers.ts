@@ -14,7 +14,7 @@ import NotFoundError from '../errors/NotFoundError';
 import Scheduler, { ScheduledTask, StreamMonitoringInitialTask, TaskType } from '../Scheduler';
 import TwitchClient from '../TwitchClient';
 import APIResponse from '../APIResponse';
-import { createFirstPrediction } from '../augmentation';
+import { createPrediction } from '../augmentation';
 
 interface EventSubSubscriptionBody {
   id: string;
@@ -132,7 +132,7 @@ export const getTwitchChannelPageData = async (params:
           type: TaskType.PredictionEvent,
           data: {
             type: 'begin',
-            prediction: createFirstPrediction(
+            prediction: createPrediction(
               stream.userId,
               stream.viewers,
               stream.startDate.getTime(),

@@ -115,7 +115,7 @@ const increaseTargetViewerCount = (
   });
 };
 
-export const createFirstPrediction = (
+export const createPrediction = (
   channelId: string,
   viewerCount: number,
   startTime: UnixEpochTime,

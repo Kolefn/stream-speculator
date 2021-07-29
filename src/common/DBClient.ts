@@ -294,6 +294,35 @@ export default class DBClient {
     });
   }
 
+  static addToDocFields(ref: faunadb.Expr, adds: { [key: string]: faunadb.ExprArg })
+    : faunadb.Expr {
+    const update: { [key: string]: faunadb.ExprArg } = {};
+
+    Object.keys(adds).forEach((key) => {
+      update[key] = q.Add(
+        q.Select(['data', key], q.Var('fieldsDoc'), 0),
+        adds[key],
+      );
+    });
+    return q.Let({
+      fieldsDoc: q.Get(ref),
+    }, q.Update(ref, {
+      data: update,
+    }));
+  }
+
+  static ifMultipleOf(
+    value: faunadb.Expr,
+    of: faunadb.ExprArg,
+    ifTrue: faunadb.ExprArg | null, ifFalse: faunadb.ExprArg | null,
+  ) : faunadb.Expr {
+    return q.If(
+      q.Equals(q.Modulo(value, of), 0),
+      ifTrue,
+      ifFalse,
+    );
+  }
+
   static userCoinPurchase(userId: string, cost: number, operation: faunadb.Expr)
     : faunadb.Expr {
     const ref = this.users.doc(userId);

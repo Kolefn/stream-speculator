@@ -1,7 +1,7 @@
 import DB from '../../common/DBClient';
 import Scheduler, { ScheduledTask, TaskType } from '../Scheduler';
 import TwitchClient from '../TwitchClient';
-import { handleTaskPredictionEvent } from './predictionHandlers';
+import { handleTaskCreatePrediction, handleTaskPredictionEvent } from './predictionHandlers';
 import {
   handleTaskMonitorChannel,
   handleTaskMonitorStreams,
@@ -20,8 +20,13 @@ const routingTable: { [key:string]: (task:ScheduledTask) => Promise<void> } = {
   (task) => handleTaskGetRealTimeStreamMetrics(task.data, twitch, db),
   [TaskType.PredictionEvent]: (task) => handleTaskPredictionEvent(task.data, db, scheduler),
   [TaskType.StreamEvent]: (task) => handleTaskStreamEvent(task.data, scheduler, db),
+  [TaskType.CreatePrediction]: (task) => handleTaskCreatePrediction(
+    task.data.channelId,
+    db,
+    twitch,
+    scheduler,
+  ),
 };
-
 export default (event: any) => {
   let tasks = [];
   if (event.Records) {

@@ -9,9 +9,11 @@ import {
   BetRequest,
   StreamMetricType,
 } from '../../common/types';
-import { getWinningOutcomeId } from '../augmentation';
+import { createPrediction, getWinningOutcomeId } from '../augmentation';
+import NotFoundError from '../errors/NotFoundError';
 import UnAuthorizedError from '../errors/UnAuthorizedError';
 import Scheduler, { TaskType } from '../Scheduler';
+import TwitchClient from '../TwitchClient';
 import { AuthSession } from './authHandlers';
 
 type PredictionEvent = {
@@ -25,6 +27,9 @@ const NULL_PREDICTION = {
   endedAt: null,
   augmentation: null,
 };
+
+const WINS_PER_BONUS = 50;
+const WIN_BONUS_COINS = 1000;
 
 export const betRequestValidator = checkSchema({
   coins: {
@@ -161,7 +166,13 @@ export const handleTaskPredictionEvent = async (
     }
   } else if (event.type === 'progress' || event.type === 'lock') {
     if (event.prediction.augmentation && event.type === 'lock') {
-      await scheduler.schedule({
+      const viewerCount = await db.exec<number>(
+        DB.getField(
+          DB.streamMetric(event.prediction.channelId, StreamMetricType.ViewerCount),
+          'value',
+        ),
+      );
+      await scheduler.scheduleBatch([{
         type: TaskType.PredictionEvent,
         data: {
           type: 'end',
@@ -169,17 +180,17 @@ export const handleTaskPredictionEvent = async (
             ...event.prediction,
             winningOutcomeId: getWinningOutcomeId(
               event.prediction,
-              await db.exec<number>(
-                DB.getField(
-                  DB.streamMetric(event.prediction.channelId, StreamMetricType.ViewerCount),
-                  'value',
-                ),
-              ),
+              viewerCount,
             ),
             status: 'resolved',
           },
         },
-      });
+      }, {
+        type: TaskType.CreatePrediction,
+        data: {
+          channelId: event.prediction.channelId,
+        },
+      }]);
       return;
     }
 
@@ -262,13 +273,58 @@ export const handleTaskPredictionEvent = async (
         DB.batch(
           ...DB.deRefPage<Bet>(page)
             .filter((bet) => payoutRatios[bet.outcomeId] > 0)
-            .map((bet) => DB.updateUserCoins(
-              bet.userId,
-              Math.floor(bet.coins * payoutRatios[bet.outcomeId]),
+            .map((bet) => DB.addToDocFields(
+              DB.users.doc(bet.userId),
+              {
+                coins: DB.add(
+                  Math.floor(bet.coins * payoutRatios[bet.outcomeId]),
+                  DB.ifMultipleOf(
+                    DB.add(
+                      DB.varSelect('fieldsDoc', ['data', 'wins']),
+                      bet.outcomeId === winningOutcomeId ? 1 : 0,
+                    ),
+                    WINS_PER_BONUS,
+                    WIN_BONUS_COINS,
+                    0,
+                  ),
+                ),
+                wins: bet.outcomeId === winningOutcomeId ? 1 : 0,
+              },
             )),
         ),
       ),
       { size: 250, getDocs: true },
     );
   }
+};
+
+export const handleTaskCreatePrediction = async (
+  channelId: string,
+  db: DB,
+  twitch: TwitchClient,
+  scheduler: Scheduler,
+) : Promise<void> => {
+  const stream = await twitch.api.helix.streams.getStreamByUserId(channelId);
+  if (!stream) {
+    throw new NotFoundError(`TwitchStream with channel id ${channelId}`);
+  }
+
+  scheduler.schedule(
+    {
+      type: TaskType.PredictionEvent,
+      data: {
+        type: 'begin',
+        prediction: createPrediction(
+          stream.userId,
+          await db.exec<number>(
+            DB.getField(
+              DB.streamMetric(channelId, StreamMetricType.ViewerCount),
+              'value',
+            ),
+          ),
+          stream.startDate.getTime(),
+        ),
+      },
+    },
+  );
 };
