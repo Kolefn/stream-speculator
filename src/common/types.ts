@@ -12,6 +12,14 @@ export type LoginAsGuestResponse = {
   dbToken: DBToken;
 };
 
+export type LoginResponse = {
+  userId: string;
+  dbToken: DBToken;
+  isGuest: boolean;
+  displayName?: string;
+  profileImageUrl?: string;
+};
+
 export type TwitchStream = {
   id: string;
   startedAt: UnixEpochTime;

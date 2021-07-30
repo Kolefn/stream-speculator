@@ -1,20 +1,26 @@
 import { createContext, useContext } from 'react';
 import { makeAutoObservable, runInAction } from 'mobx';
-import { loginAsGuest } from '../api/endpoints';
+import { login, loginAsGuest } from '../api/endpoints';
 import { DBToken, User } from '../../common/types';
 import DBClient from '../../common/DBClient';
 
 export class UserStore {
   coins: number = 0;
 
-  id: string = '';
+  id: string | null = null;
 
   dbToken: DBToken | null = null;
 
+  displayName?: string;
+
+  profileImageUrl?: string;
+
   loginError: Error | null = null;
 
+  isGuest: boolean = true;
+
   get loggedIn() {
-    return this.id !== '';
+    return this.id !== null;
   }
 
   get dbClient() : DBClient | null {
@@ -25,26 +31,46 @@ export class UserStore {
     makeAutoObservable(this);
   }
 
-  async login() {
-    try {
-      const response = await loginAsGuest();
+  async loginAsGuest() {
+    loginAsGuest().then((resp) => {
       runInAction(() => {
-        this.id = response.userId;
-        this.dbToken = response.dbToken;
+        this.id = resp.userId;
+        this.dbToken = resp.dbToken;
+        this.isGuest = true;
+        this.profileImageUrl = '';
+        this.displayName = '';
         this.loginError = null;
       });
-    } catch (e) {
+    }).catch((e) => {
       runInAction(() => {
         this.loginError = e;
       });
-    }
+    });
   }
 
-  listenToCoins() {
-    if (!this.dbToken) {
-      return;
+  async autoLogin() {
+    login().then((resp) => {
+      runInAction(() => {
+        this.id = resp.userId;
+        this.dbToken = resp.dbToken;
+        this.displayName = resp.displayName;
+        this.profileImageUrl = resp.profileImageUrl;
+        this.isGuest = resp.isGuest;
+        this.loginError = null;
+      });
+    }).catch((e) => {
+      runInAction(() => {
+        this.loginError = e;
+      });
+    });
+  }
+
+  listenToCoins() : Function | undefined {
+    if (!this.dbClient || !this.dbToken || !this.id) {
+      return undefined;
     }
-    this.dbClient?.onChange(DBClient.users.doc(this.id), (data) => {
+
+    return this.dbClient.onChange(DBClient.users.doc(this.id), (data) => {
       const user = data.document.data as User;
       runInAction(() => {
         this.coins = user.coins;

@@ -16,10 +16,10 @@ const TwitchChannelPage = observer(() => {
   const userStore = useUserStore();
 
   useEffect(() => {
-    if (channelName) {
+    if (channelName && userStore.id) {
       channelStore.load(channelName);
     }
-  }, [channelName]);
+  }, [channelName, userStore.id]);
 
   useEffect(() => {
     if (userStore.dbClient && channelStore.channel) {

@@ -1,11 +1,12 @@
 import crypto from 'crypto';
 import { exchangeCode, getTokenInfo } from 'twitch-auth/lib/helpers';
-import { DBToken, LoginAsGuestResponse } from '../../common/types';
+import { DBToken, LoginAsGuestResponse, LoginResponse } from '../../common/types';
 import APIResponse from '../APIResponse';
 import Cookie from '../Cookie';
 import DB, { FaunaTokenDoc, FaunaDoc } from '../../common/DBClient';
 import UnAuthorizedError from '../errors/UnAuthorizedError';
 import TwitchClient from '../TwitchClient';
+import NotFoundError from '../errors/NotFoundError';
 
 const GUEST_TTL_DAYS = 7;
 const GUEST_TTL_MS = GUEST_TTL_DAYS * 86400 * 1000;
@@ -15,6 +16,7 @@ const USER_INITIAL_COINS = 10000;
 
 export type AuthSession = {
   userId: string;
+  twitchId: string;
   isGuest: boolean;
   twitchToken?: string;
   state?: string;
@@ -35,10 +37,7 @@ export const loginAsGuest = async (session: AuthSession | null, db: DB)
     return new APIResponse<LoginAsGuestResponse>({
       data: {
         userId: session.userId,
-        dbToken: {
-          secret: token.secret,
-          expiresAt: Date.now() + DB_TOKEN_TTL_SEC * 1000,
-        },
+        dbToken: token,
       },
     });
   }
@@ -59,6 +58,41 @@ export const loginAsGuest = async (session: AuthSession | null, db: DB)
     },
     cookies: [new Cookie('session', { userId, isGuest: true }, GUEST_TTL_MS)],
   });
+};
+
+export const login = async (session: AuthSession | null, db: DB, twitch: TwitchClient)
+: Promise<LoginResponse> => {
+  if (!session) {
+    throw new UnAuthorizedError('login');
+  }
+
+  const dbToken = await getDBToken(session, db);
+
+  if (session.isGuest) {
+    return {
+      userId: session.userId,
+      dbToken,
+      isGuest: true,
+    };
+  }
+
+  if (!session.twitchId) {
+    throw new UnAuthorizedError('twitchId login');
+  }
+
+  const twitchUser = await twitch.api.helix.users.getUserById(session.twitchId);
+
+  if (!twitchUser) {
+    throw new NotFoundError('twitch login user');
+  }
+
+  return {
+    userId: session.userId,
+    displayName: twitchUser?.displayName as string,
+    profileImageUrl: twitchUser?.profilePictureUrl as string,
+    isGuest: false,
+    dbToken,
+  };
 };
 
 export const redirectToTwitchLogin = async (session: AuthSession | null)
@@ -103,7 +137,7 @@ export const redirectFromTwitchLogin = async (
 
   const tokenInfo = await getTokenInfo(token.accessToken, process.env.TWITCH_CLIENT_ID as string);
 
-  const { user } = await db.exec<{ user: FaunaDoc, dbToken: FaunaTokenDoc }>(
+  const { user } = await db.exec<{ user: FaunaDoc }>(
     DB.named({
       existingUser: DB.getIfMatch(
         DB.users.with('twitchId', tokenInfo.userId),
@@ -126,6 +160,7 @@ export const redirectFromTwitchLogin = async (
         'session',
         {
           userId: user.ref.id,
+          twitchId: tokenInfo.userId,
           twitchToken: TwitchClient.encryptToken(token),
           isGuest: false,
         },
