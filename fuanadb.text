@@ -54,6 +54,15 @@ CreateIndex({
 })
 
 CreateIndex({
+  name: "Predictions_by_channelRef_status",
+  source: Collection("Predictions"),
+  terms: [
+    { field: ["data", "channelRef"] },
+    { field: ["data", "status"] },
+  ],
+})
+
+CreateIndex({
   name: "Bets_by_predictionRef",
   source: Collection("Bets"),
   terms: [

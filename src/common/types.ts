@@ -90,7 +90,7 @@ export type Prediction = {
   title: string;
   outcomes: { [id: string]: PredictionOutcome };
   winningOutcomeId?: string;
-  status?: 'resolved' | 'canceled';
+  status: 'active' | 'resolved' | 'canceled';
   startedAt: UnixEpochTime;
   locksAt: UnixEpochTime;
   endedAt?: UnixEpochTime;

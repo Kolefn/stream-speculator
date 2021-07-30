@@ -17,6 +17,11 @@ class DBCollection {
     return q.Match(q.Index(`${this.name}_by_${field}`), value);
   }
 
+  withMulti(items: { field: string, value: any }[]) : faunadb.Expr {
+    const indexName = `${this.name}_by_${items.map((i) => i.field).join('_')}`;
+    return q.Match(q.Index(indexName), ...items.map((i) => i.value));
+  }
+
   withRefsTo(refs: { collection: DBCollection, id: string }[]) : faunadb.Expr {
     const fields = refs.map((ref) => {
       let field = ref.collection.name.toLowerCase();
@@ -407,6 +412,10 @@ export default class DBClient {
 
   static getSortedResults(set: faunadb.Expr) : faunadb.Expr {
     return q.Map(set, q.Lambda(['field1', 'ref'], q.Get(q.Var('ref'))));
+  }
+
+  static getSortedRefs(set: faunadb.Expr) : faunadb.Expr {
+    return q.Map(set, q.Lambda(['field1', 'ref'], q.Var('ref')));
   }
 
   async exec<T>(expr: faunadb.Expr) : Promise<T> {
