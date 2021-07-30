@@ -178,11 +178,14 @@ export default class DBClient {
   static refify(data: { [key: string]: any }) : { [key: string] : any } {
     const docData: any = {};
     Object.keys(data).forEach((k) => {
-      if (k.indexOf('Id') > -1) {
+      if (k.indexOf('Id') > -1 && k.charAt(0) !== '_') {
         const collectionSingular = k.split('Id')[0];
         let collectionPlural = `${collectionSingular}s`;
         collectionPlural = collectionPlural.charAt(0).toUpperCase() + collectionPlural.slice(1);
         docData[`${collectionSingular}Ref`] = q.Ref(q.Collection(collectionPlural), data[k]);
+      } else if (k.charAt(0) === '_') {
+        const s = k.slice(1);
+        docData[s] = data[k];
       } else {
         docData[k] = data[k];
       }
@@ -198,7 +201,7 @@ export default class DBClient {
     }, {});
   }
 
-  static fromNow(offset: number, unit: 'days' | 'seconds') : faunadb.Expr {
+  static fromNow(offset: number, unit: 'days' | 'seconds' | 'hours') : faunadb.Expr {
     return q.TimeAdd(q.Now(), offset, unit);
   }
 

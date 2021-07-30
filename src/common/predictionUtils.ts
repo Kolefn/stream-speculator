@@ -8,6 +8,9 @@ export const OUTCOME_COINS_MIN = 100;
 export const CHANNEL_POINTS_TO_COINS_RATIO = 1;
 export const MAXIMUM_BET = 50000;
 
+export const WINS_PER_BONUS = 50;
+export const WIN_BONUS_COINS = 1000;
+
 export const channelPointsToCoins = (val: number)
 : number => Math.floor(val * CHANNEL_POINTS_TO_COINS_RATIO);
 

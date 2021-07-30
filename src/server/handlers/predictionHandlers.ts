@@ -1,7 +1,9 @@
 /* eslint-disable import/prefer-default-export */
 import { checkSchema } from 'express-validator/src/middlewares/schema';
 import DB, { FaunaDoc } from '../../common/DBClient';
-import { channelPointsToCoins, isValidBetAmount, OUTCOME_COINS_MIN } from '../../common/predictionUtils';
+import {
+  channelPointsToCoins, isValidBetAmount, OUTCOME_COINS_MIN, WINS_PER_BONUS, WIN_BONUS_COINS,
+} from '../../common/predictionUtils';
 import {
   Prediction,
   PredictionOutcome,
@@ -27,9 +29,6 @@ const NULL_PREDICTION = {
   endedAt: null,
   augmentation: null,
 };
-
-const WINS_PER_BONUS = 2;
-const WIN_BONUS_COINS = 1000;
 
 export const betRequestValidator = checkSchema({
   coins: {
@@ -76,7 +75,7 @@ export const handleBet = async (
     ])),
     bet: DB.ifNull(
       DB.useVar('existingBet'),
-      DB.create(DB.bets, { ...request, userId: session.userId }, DB.fromNow(1, 'days')),
+      DB.create(DB.bets, { ...request, userId: session.userId }, DB.fromNow(12, 'hours')),
       DB.addToDocFields(DB.varSelect('existingBet', ['ref']), { coins: request.coins }),
     ),
   }, DB.batch(
@@ -141,7 +140,7 @@ export const handleTaskPredictionEvent = async (
             },
           },
         ),
-        DB.create(DB.predictions, event.prediction, DB.fromNow(1, 'days')),
+        DB.create(DB.predictions, event.prediction, DB.fromNow(12, 'hours')),
       ),
     );
 

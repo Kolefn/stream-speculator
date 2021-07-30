@@ -65,9 +65,9 @@ ExpressApp.use((req, _res, next) => {
   next();
 });
 
-ExpressApp.get('/api/auth/dbToken', buildHandler((req) => getDBToken(req.session)));
+ExpressApp.get('/api/auth/dbToken', buildHandler((req) => getDBToken(req.session, dbClient)));
 
-ExpressApp.post('/api/auth/loginAsGuest', buildHandler((req) => loginAsGuest(req.session)));
+ExpressApp.post('/api/auth/loginAsGuest', buildHandler((req) => loginAsGuest(req.session, dbClient)));
 
 ExpressApp.get('/api/twitch/:channelName', buildHandler((req) => getTwitchChannelPageData({
   db: dbClient,

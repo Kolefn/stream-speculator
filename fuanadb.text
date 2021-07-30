@@ -71,19 +71,75 @@ CreateIndex({
   ]
 })
 
+
+CreateIndex({
+  name: "Users_by_twitchId",
+  source: Collection("Users"),
+  terms: [
+    { field: ["data", "twitchId"] },
+  ]
+})
+
 CreateRole({
   name: "Guest",
   membership: [
     {
       resource: Collection("Users"),
-      predicate: Query(ref =>
-        Select(["data", "isGuest"], Get(ref), false)
+      predicate: Query(
+        Lambda("ref", Select(["data", "isGuest"], Get(Var("ref")), false))
       )
     }
   ],
   privileges: [
-    {resource: Collection("StreamMetrics"), actions: {read: true}},
-    {resource: Collection("Channels"), actions: { read: true }},
-    {resource: Collection("Users"), actions { read: Query(ref => Equals(ref, CurrentIdentity())) }}
+    {
+      resource: Collection("StreamMetrics"),
+      actions: {
+        read: true,
+      }
+    },
+    {
+      resource: Collection("Users"),
+      actions: {
+        read: Query(Lambda("ref", Equals(CurrentIdentity(), Var("ref")))),
+      }
+    },
+    {
+      resource: Collection("Channels"),
+      actions: {
+        read: true,
+      }
+    }
+  ]
+})
+
+CreateRole({
+  name: "DefaultUser",
+  membership: [
+    {
+      resource: Collection("Users"),
+      predicate: Query(
+        Lambda("ref", Equals(Select(["data", "isGuest"], Get(Var("ref")), false), false))
+      )
+    }
+  ],
+  privileges: [
+    {
+      resource: Collection("StreamMetrics"),
+      actions: {
+        read: true,
+      }
+    },
+    {
+      resource: Collection("Users"),
+      actions: {
+        read: Query(Lambda("ref", Equals(CurrentIdentity(), Var("ref")))),
+      }
+    },
+    {
+      resource: Collection("Channels"),
+      actions: {
+        read: true,
+      }
+    }
   ]
 })
