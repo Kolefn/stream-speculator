@@ -4,7 +4,7 @@ const isDev = process.env.NODE_ENV === 'dev';
 
 module.exports = {
   mode: isDev ? 'development' : 'production',
-  entry: './src/index.tsx',
+  entry: './src/client/index.tsx',
   module: {
     rules: [
       {

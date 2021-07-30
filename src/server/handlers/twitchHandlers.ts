@@ -2,13 +2,19 @@ import { IncomingHttpHeaders } from 'http';
 import crypto from 'crypto';
 import { HelixEventSubSubscriptionStatus, HelixEventSubTransportData } from 'twitch/lib';
 import {
-  TwitchChannelPageData, TwitchChannel, StreamMetricType, StreamMetricPoint,
+  TwitchChannelPageData,
+  TwitchChannel, StreamMetricType,
+  StreamMetricPoint, StreamMetric, Prediction, PredictionOutcome,
 } from '../../common/types';
-import DB, { FaunaDocCreate } from '../../common/DBClient';
+import { AuthSession } from './authHandlers';
+import DB, {
+  FaunaDoc, FaunaDocCreate, FaunaPage, FaunaRef,
+} from '../../common/DBClient';
 import NotFoundError from '../errors/NotFoundError';
-import Scheduler, { StreamMonitoringTasks, TaskType } from '../Scheduler';
+import Scheduler, { ScheduledTask, StreamMonitoringInitialTask, TaskType } from '../Scheduler';
 import TwitchClient from '../TwitchClient';
 import APIResponse from '../APIResponse';
+import { createPrediction } from '../augmentation';
 
 interface EventSubSubscriptionBody {
   id: string;
@@ -32,62 +38,119 @@ interface EventSubNotificationBody extends BaseEventSubBody {
   event: { [key: string] : any };
 }
 
-export const getTwitchChannelPageData = async (name: string,
-  clients: { db: DB, twitch: TwitchClient, scheduler: Scheduler })
-: Promise<TwitchChannelPageData> => {
-  const userName = name.toLowerCase();
+type StreamEvent = {
+  type: 'stream.online' | 'stream.offline';
+  channelId: string;
+};
+
+type StreamOnlineEvent = StreamEvent & {
+  type: 'stream.online';
+  streamId: string;
+  startedAt: string;
+};
+
+export const getTwitchChannelPageData = async (params:
+{
+  channelName: string,
+  session: AuthSession | null,
+  db: DB, twitch: TwitchClient,
+  scheduler: Scheduler
+})
+: Promise<APIResponse<TwitchChannelPageData>> => {
+  const userName = params.channelName.toLowerCase();
   try {
     const channel = DB.deRef<TwitchChannel>(
-      await clients.db.exec(
+      await params.db.exec(
         DB.get(DB.channels.with('userName', userName)),
       ),
     );
+    const response: TwitchChannelPageData = { channel };
     if (channel.isLive) {
-      return {
-        channel,
-        metrics: {
-          viewerCount: await clients.db.history<StreamMetricPoint>(
-            DB.streamMetric(channel.id, StreamMetricType.ViewerCount),
-            1000 * 60 * 60,
-          ),
-        },
+      response.metrics = {
+        viewerCount: await params.db.history<StreamMetricPoint>(
+          DB.streamMetric(channel.id, StreamMetricType.ViewerCount),
+          1000 * 60 * 60,
+        ),
       };
     }
-    return { channel };
-  } catch (e) {
-    console.error(e);
-    const stream = await clients.twitch.api.helix.streams.getStreamByUserName(userName);
+
+    if (params.session) {
+      response.predictions = DB.deRefPage<Prediction>(
+        await params.db.exec<FaunaPage<FaunaDoc>>(
+          DB.getSortedResults(
+            DB.firstPage(
+              DB.predictions.withRefsTo([
+                {
+                  collection: DB.channels,
+                  id: channel.id,
+                },
+              ]),
+              10,
+            ),
+          ),
+        ),
+      );
+    }
+    return new APIResponse({ status: 200, data: response });
+  } catch {
+    const stream = await params.twitch.api.helix.streams.getStreamByUserName(userName);
     if (!stream) {
       throw new NotFoundError(`${userName} TwitchStream`);
     }
 
-    const result = await clients.db.exec<FaunaDocCreate>(
-      DB.create<TwitchChannel>(DB.channels, {
-        id: stream.userId,
-        displayName: stream.userDisplayName,
-        userName: stream.userName,
-        isLive: true,
-        stream: {
-          id: stream.id,
-          startedAt: stream.startDate.getTime(),
-          viewerCount: stream.viewers,
-        },
-      }),
+    const result = await params.db.exec<FaunaDocCreate>(
+      DB.batch(
+        DB.create<StreamMetric & { id: string }>(DB.streamMetrics, {
+          id: `${stream.userId}${StreamMetricType.ViewerCount.toString()}`,
+          channelId: stream.userId,
+          type: StreamMetricType.ViewerCount,
+          value: stream.viewers,
+          timestamp: Date.now() / 1000,
+        }),
+        DB.create<TwitchChannel>(DB.channels, {
+          id: stream.userId,
+          displayName: stream.userDisplayName,
+          userName: stream.userName,
+          isLive: true,
+          stream: {
+            id: stream.id,
+            startedAt: stream.startDate.getTime(),
+            viewerCount: stream.viewers,
+          },
+        }),
+      ),
     );
 
     if (result.created) {
-      await clients.scheduler.schedule({
-        type: TaskType.MonitorChannel,
-        data: { channelId: stream.userId },
-      });
+      await params.scheduler.scheduleBatch([
+        {
+          type: TaskType.MonitorChannel,
+          data: { channelId: stream.userId },
+        },
+        StreamMonitoringInitialTask,
+        {
+          type: TaskType.PredictionEvent,
+          data: {
+            type: 'begin',
+            prediction: createPrediction(
+              stream.userId,
+              stream.viewers,
+              stream.startDate.getTime(),
+            ),
+          },
+        },
+      ]);
     }
 
-    return { channel: DB.deRef<TwitchChannel>(result.doc) };
+    return new APIResponse({
+      status: 200,
+      data: { channel: DB.deRef<TwitchChannel>(result.doc) },
+    });
   }
 };
 
 export const handleTwitchWebhook = async (headers: IncomingHttpHeaders, rawBody: string,
-  clients: { scheduler: Scheduler, db: DB })
+  clients: { scheduler: Scheduler, db: DB, twitch: TwitchClient })
 : Promise<APIResponse<any>> => {
   const messageId = headers['twitch-eventsub-message-id'] as string;
   const timestamp = headers['twitch-eventsub-message-timestamp'] as string;
@@ -124,29 +187,157 @@ export const handleTwitchWebhook = async (headers: IncomingHttpHeaders, rawBody:
     });
   }
 
-  if (type === 'notification') {
-    const notificationBody = body as EventSubNotificationBody;
-    const { event } = notificationBody;
-    const eventType = notificationBody.subscription.type;
-    const channelId = event.broadcaster_user_id;
-    if (eventType === 'stream.online') {
-      const update = {
-        isLive: true,
-        stream: {
-          id: event.id,
-          startedAt: new Date(event.started_at).getTime(),
-          viewerCount: 0,
-        },
-      };
-      await clients.db.exec(DB.update(DB.channels.doc(channelId), update));
-      await clients.scheduler.scheduleBatch(StreamMonitoringTasks);
-    } else if (eventType === 'stream.offline') {
-      await clients.db.exec(DB.update(DB.channels.doc(channelId), { isLive: false }));
-    }
-    return new APIResponse({
-      status: 200,
+  if (type !== 'notification') {
+    return APIResponse.EmptyOk;
+  }
+
+  const notificationBody = body as EventSubNotificationBody;
+  const { event } = notificationBody;
+  const eventType = notificationBody.subscription.type;
+  const channelId = event.broadcaster_user_id;
+
+  if (eventType === 'stream.online' || eventType === 'stream.offline') {
+    await clients.scheduler.schedule({
+      type: TaskType.StreamEvent,
+      data: {
+        type: eventType, channelId, startedAt: event.started_at, streamId: event.id,
+      },
+    });
+  } else if (eventType.indexOf('channel.prediction.') > -1) {
+    const prediction: Prediction = {
+      id: event.id,
+      channelId: event.broadcaster_user_id,
+      title: event.title,
+      outcomes: (event.outcomes as any[]).map((item: any) : PredictionOutcome => ({
+        id: item.id,
+        title: item.title,
+        color: item.color,
+        channelPointUsers: item.users ?? 0,
+        channelPoints: item.channel_points ?? 0,
+        coins: 0,
+        coinUsers: 0,
+      })).reduce((a: { [key:string]: PredictionOutcome }, b) => {
+        // eslint-disable-next-line no-param-reassign
+        a[b.id] = b;
+        return a;
+      }, {}),
+      status: event.status,
+      winningOutcomeId: event.winning_outcome_id,
+      startedAt: new Date(event.started_at).getTime(),
+      locksAt: new Date(event.locks_at).getTime(),
+      endedAt: event.ended_at ? new Date(event.ended_at).getTime() : undefined,
+    };
+    await clients.scheduler.schedule({
+      type: TaskType.PredictionEvent,
+      data: { type: eventType.split('channel.prediction.')[1], prediction },
     });
   }
 
-  return new APIResponse({ status: 200 });
+  return new APIResponse({
+    status: 200,
+  });
+};
+
+export const handleTaskMonitorChannel = async (
+  data: { channelId: string },
+  twitch: TwitchClient,
+) => {
+  if (!process.env.LOCAL) {
+    await twitch.subToChannelEvents(data.channelId);
+  }
+};
+
+export const handleTaskMonitorStreams = async (
+  task: ScheduledTask,
+  scheduler: Scheduler,
+  db: DB,
+) => {
+  const nextTasks: ScheduledTask[] = [];
+  const streamsChanged = await db.exec<boolean>(
+    DB.ifTrueSetFalse(DB.scheduledTasks.doc(TaskType.MonitorStreams.toString()), 'streamsChanged'),
+  );
+  if (streamsChanged) {
+    await db.forEachPage<FaunaRef>(DB.channels.with('isLive', true), async (page) => {
+      if (page.data.length > 0) {
+        nextTasks.push({
+          type: TaskType.GetRealTimeStreamMetrics,
+          data: page.data.map((ref) => ref.id),
+        });
+      }
+    }, { size: TwitchClient.MaxWebsocketTopicsPerIP });
+  } else {
+    nextTasks.push(...task.data.subTasks);
+  }
+
+  if (nextTasks.length > 0) {
+    nextTasks.push({ ...task, data: { subTasks: [...nextTasks] }, isRepeat: true });
+    await scheduler.scheduleBatch(nextTasks);
+  } else {
+    await Scheduler.end(task);
+  }
+};
+
+export const handleTaskGetRealTimeStreamMetrics = async (
+  data: string[],
+  twitch: TwitchClient, db: DB,
+) => {
+  const updates = await twitch.getStreamViewerCounts(data);
+  await db.exec(DB.batch(...Object.keys(updates).map((channelId) => {
+    const update = updates[channelId];
+    return DB.update(DB.streamMetric(update.channelId, update.type), update);
+  })));
+};
+
+export const handleTaskStreamEvent = async (
+  event: StreamEvent,
+  scheduler: Scheduler,
+  db: DB,
+) => {
+  if (event.type === 'stream.online') {
+    const onlineEvent = (event as StreamOnlineEvent);
+    const update = {
+      isLive: true,
+      stream: {
+        id: onlineEvent.streamId,
+        startedAt: new Date(onlineEvent.startedAt).getTime(),
+        viewerCount: 0,
+      },
+    };
+    await db.exec(DB.update(DB.channels.doc(event.channelId), update));
+    await scheduler.scheduleBatch([
+      StreamMonitoringInitialTask,
+      {
+        type: TaskType.CreatePrediction,
+        data: {
+          channelId: event.channelId,
+        },
+        when: [
+          {
+            timestamp: Date.now() + 10 * 60 * 1000,
+          },
+        ],
+      },
+    ]);
+  } else if (event.type === 'stream.offline') {
+    const page = await db.exec<FaunaPage<FaunaDoc>>(
+      DB.batch(
+        DB.update(DB.scheduledTasks.doc(TaskType.MonitorStreams.toString()),
+          { streamsChanged: true }),
+        DB.update(DB.channels.doc(event.channelId), { isLive: false }),
+        DB.firstPage(DB.predictions.withRefsTo([{ collection: DB.channels, id: event.channelId }])),
+      ),
+    );
+
+    await scheduler.scheduleBatch(page.data.map((doc) => ({
+      type: TaskType.PredictionEvent,
+      data: {
+        type: 'end',
+        prediction: {
+          id: doc.ref.id,
+          winningOutcomeId: null,
+          status: 'canceled',
+        },
+      },
+    })));
+  }
 };

@@ -56,7 +56,7 @@ functions:
     events:
       - httpApi: '*'
   taskHandler:
-    handler: build/src/server/handlers/scheduledTaskHandler.default
+    handler: build/src/server/handlers/taskRouter.default
     timeout: 15
     events:
       - sqs:

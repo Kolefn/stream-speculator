@@ -1,5 +1,6 @@
 export type Milliseconds = number;
 export type UnixEpochTime = Milliseconds;
+export type Seconds = number;
 
 export type DBToken = {
   secret: string;
@@ -23,6 +24,7 @@ export type TwitchChannel = {
   userName: string;
   isLive: boolean;
   stream?: TwitchStream;
+  predictionUpdate?: Partial<Prediction>;
 };
 
 export type TwitchChannelPageData = {
@@ -30,6 +32,7 @@ export type TwitchChannelPageData = {
   metrics?: {
     viewerCount?: StreamMetricPoint[];
   }
+  predictions?: Prediction[],
 };
 
 export enum StreamMetricType {
@@ -40,7 +43,58 @@ export type StreamMetric = {
   channelId: string;
   type: StreamMetricType;
   value: number;
-  timestamp: number;
+  timestamp: Seconds;
 };
 
-export type StreamMetricPoint = Pick<StreamMetric, 'value' | 'timestamp'>;
+export type StreamMetricPoint = {
+  value: number;
+  timestamp: Seconds;
+};
+
+export type User = {
+  id: string;
+  coins: number;
+};
+
+export type PredictionOutcome = {
+  id: string;
+  title: string;
+  color: string;
+  channelPointUsers: number;
+  channelPoints: number;
+  coinUsers: number;
+  coins: number;
+};
+
+export enum AugmentationType {
+  MoreLessEqual,
+  IncreaseTarget,
+}
+
+export type AugmentationDetails = {
+  type: AugmentationType,
+  data?: any;
+};
+
+export type Prediction = {
+  id: string;
+  channelId: string;
+  title: string;
+  outcomes: { [id: string]: PredictionOutcome };
+  winningOutcomeId?: string;
+  status?: 'resolved' | 'canceled';
+  startedAt: UnixEpochTime;
+  locksAt: UnixEpochTime;
+  endedAt?: UnixEpochTime;
+  augmentation?: AugmentationDetails;
+};
+
+export type Bet = {
+  id: string;
+  userId: string;
+  predictionId: string;
+  outcomeId: string;
+  coins: number;
+};
+
+export type BetRequest = Pick<Bet, 'predictionId' | 'outcomeId' | 'coins'>;

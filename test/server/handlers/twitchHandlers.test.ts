@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 import DBClient from '../../../src/common/DBClient';
 import { handleTwitchWebhook } from '../../../src/server/handlers/twitchHandlers';
-import Scheduler, { StreamMonitoringTasks } from '../../../src/server/Scheduler';
+import Scheduler, { StreamMonitoringInitialTask } from '../../../src/server/Scheduler';
 
 const getSignature = (headers: any, rawBody: string) : string => {
   process.env.TWITCH_WEBHOOK_SECRET = '1234567';
@@ -68,7 +68,7 @@ describe('handleTwitchWebhook', () => {
       clients,
     );
     expect(create).toHaveBeenCalledWith(DBClient.webhookSubs, {
-      id: 'abcdef',
+      _id: 'abcdef',
       type: 'stream.online',
       channelId: '984123',
     });
@@ -92,9 +92,9 @@ describe('handleTwitchWebhook', () => {
     });
     const exec = jest.spyOn(clients.db, 'exec');
     const update = jest.spyOn(DBClient, 'update');
-    const batch = jest.spyOn(clients.scheduler, 'scheduleBatch');
+    const schedule = jest.spyOn(clients.scheduler, 'schedule');
     exec.mockResolvedValueOnce({});
-    batch.mockResolvedValueOnce();
+    schedule.mockResolvedValueOnce(true);
     const response = await handleTwitchWebhook(buildWebhookHeaders(rawBody), rawBody, clients);
     expect(update).toHaveBeenCalledWith(DBClient.channels.doc(event.broadcaster_user_id), {
       isLive: true,
@@ -105,7 +105,7 @@ describe('handleTwitchWebhook', () => {
       },
     });
     expect(exec).toHaveBeenCalled();
-    expect(batch).toHaveBeenCalledWith(StreamMonitoringTasks);
+    expect(schedule).toHaveBeenCalledWith(StreamMonitoringInitialTask);
     expect(response.options.status).toEqual(200);
   });
 

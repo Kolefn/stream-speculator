@@ -18,7 +18,7 @@ export type APIResponseOptions<T extends {}> = {
 export default class APIResponse<T extends {}> {
   static EmptyOk = new APIResponse();
 
-  static send<T>(options: Partial<APIResponseOptions<T>>, res: Response) : Response {
+  static send<T>(options: Partial<APIResponseOptions<T>>, res: Response) : void {
     return new APIResponse(options).send(res);
   }
 
@@ -33,7 +33,7 @@ export default class APIResponse<T extends {}> {
     };
   }
 
-  send(res: Response) : Response {
+  send(res: Response) : void {
     res.status(this.options.status);
     res.contentType(this.options.contentType as string);
     if (this.options.cookies.length > 0) {
@@ -46,6 +46,5 @@ export default class APIResponse<T extends {}> {
     } else {
       res.send(this.options.data);
     }
-    return res;
   }
 }
