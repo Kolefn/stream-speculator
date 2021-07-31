@@ -73,8 +73,8 @@ ExpressApp.post('/api/auth/loginAsGuest', buildHandler((req) => loginAsGuest(req
 
 ExpressApp.post('/api/auth/login', buildHandler((req) => login(req.session, dbClient, twitch)));
 
-ExpressApp.get('/api/twitch/redirectTo', buildHandler((req) => redirectToTwitchLogin(req.session)));
-ExpressApp.get('/api/twitch/redirectFrom', buildHandler((req) => redirectFromTwitchLogin(req.session, req.params.code, req.params.state, dbClient)));
+ExpressApp.get('/api/twitch/redirectTo', buildHandler((req) => redirectToTwitchLogin(req.session, req.headers.referer)));
+ExpressApp.get('/api/twitch/redirectFrom', buildHandler((req) => redirectFromTwitchLogin(req.session, req.query.code as string, req.query.state as string, dbClient)));
 
 ExpressApp.get('/api/twitch/:channelName', buildHandler((req) => getTwitchChannelPageData({
   db: dbClient,

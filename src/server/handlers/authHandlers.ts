@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import { exchangeCode, getTokenInfo } from 'twitch-auth/lib/helpers';
+import { exchangeCode, getTokenInfo } from 'twitch-auth';
 import { DBToken, LoginAsGuestResponse, LoginResponse } from '../../common/types';
 import APIResponse from '../APIResponse';
 import Cookie from '../Cookie';
@@ -20,6 +20,7 @@ export type AuthSession = {
   isGuest: boolean;
   twitchToken?: string;
   state?: string;
+  referrer?: string;
 };
 
 export const getDBToken = async (session: AuthSession | null, db: DB) : Promise<DBToken> => {
@@ -95,9 +96,9 @@ export const login = async (session: AuthSession | null, db: DB, twitch: TwitchC
   };
 };
 
-export const redirectToTwitchLogin = async (session: AuthSession | null)
+export const redirectToTwitchLogin = async (session: AuthSession | null, referrer?: string)
 : Promise<APIResponse<any>> => {
-  const state = crypto.randomBytes(1).toString('hex');
+  const state = crypto.randomBytes(3).toString('hex');
   return new APIResponse<any>({
     data: {},
     redirect: `https://id.twitch.tv/oauth2/authorize?client_id=${process.env.TWITCH_CLIENT_ID}&redirect_uri=${process.env.TWITCH_REDIRECT_URI}&response_type=code&state=${state}`,
@@ -107,6 +108,7 @@ export const redirectToTwitchLogin = async (session: AuthSession | null)
         {
           ...(session ?? {}),
           state,
+          referrer,
         },
         GUEST_TTL_MS,
       ),
@@ -116,8 +118,8 @@ export const redirectToTwitchLogin = async (session: AuthSession | null)
 
 export const redirectFromTwitchLogin = async (
   session: Partial<AuthSession> | null,
-  state: string,
   code: string,
+  state: string,
   db: DB,
 ) => {
   if (!session) {
@@ -154,7 +156,7 @@ export const redirectFromTwitchLogin = async (
   );
   return new APIResponse<any>({
     data: {},
-    redirect: process.env.DOMAIN_NAME,
+    redirect: session.referrer ?? process.env.HOME_PAGE_URL,
     cookies: [
       new Cookie(
         'session',

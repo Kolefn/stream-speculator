@@ -13,7 +13,7 @@ export default observer(() => {
       </h3>
       {userStore.isGuest && (
       <div style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between' }}>
-        <button type="button" onClick={() => userStore.loginAsGuest()}>Guest</button>
+        {!userStore.loggedIn && <button type="button" onClick={() => userStore.loginAsGuest()}>Guest</button> }
         <Link to="/api/twitch/redirectTo">Twitch</Link>
       </div>
       )}

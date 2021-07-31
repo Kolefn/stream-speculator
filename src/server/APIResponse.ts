@@ -39,7 +39,8 @@ export default class APIResponse<T extends {}> {
     res.status(this.options.status);
     res.contentType(this.options.contentType as string);
     if (this.options.redirect) {
-      res.redirect(this.options.redirect);
+      res.location(this.options.redirect);
+      res.status(APIResponseStatus.Redirect);
     }
     if (this.options.cookies.length > 0) {
       this.options.cookies.forEach((c) => {
