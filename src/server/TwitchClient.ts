@@ -1,5 +1,8 @@
-import { ApiClient, HelixEventSubSubscription, HelixEventSubTransportOptions } from 'twitch';
+import {
+  AccessToken, ApiClient, HelixEventSubSubscription, HelixEventSubTransportOptions,
+} from 'twitch';
 import { BasicPubSubClient } from 'twitch-pubsub-client';
+import Cryptr from 'cryptr';
 import DBClient from '../common/DBClient';
 import TwitchAuthProvider from './TwitchAuthProvider';
 import { StreamMetric, StreamMetricType } from '../common/types';
@@ -129,5 +132,13 @@ export default class TwitchClient {
     });
     await this.pubsub.disconnect();
     return output;
+  }
+
+  static encryptToken(token: AccessToken) : string {
+    return new Cryptr(process.env.TWITCH_TOKEN_ENCRYPTION_KEY as string).encrypt(JSON.stringify({
+      accessToken: token.accessToken,
+      refreshToken: token.refreshToken,
+      expiresAt: token.expiryDate?.getTime(),
+    }));
   }
 }

@@ -6,6 +6,7 @@ export enum APIResponseStatus {
   UnAuthorized = 401,
   NotFound = 404,
   ServerError = 500,
+  Redirect = 302,
 }
 
 export type APIResponseOptions<T extends {}> = {
@@ -13,6 +14,7 @@ export type APIResponseOptions<T extends {}> = {
   data?: T;
   cookies: Cookie[];
   contentType?: string;
+  redirect?: string;
 };
 
 export default class APIResponse<T extends {}> {
@@ -36,6 +38,10 @@ export default class APIResponse<T extends {}> {
   send(res: Response) : void {
     res.status(this.options.status);
     res.contentType(this.options.contentType as string);
+    if (this.options.redirect) {
+      res.location(this.options.redirect);
+      res.status(APIResponseStatus.Redirect);
+    }
     if (this.options.cookies.length > 0) {
       this.options.cookies.forEach((c) => {
         c.addTo(res);

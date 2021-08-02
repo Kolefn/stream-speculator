@@ -1,3 +1,4 @@
+import { observer } from 'mobx-react-lite';
 import React, { useEffect } from 'react';
 import ReactDOM from 'react-dom';
 import {
@@ -10,22 +11,31 @@ import TwitchChannelPage from './pages/TwitchChannelPage';
 import { ChannelStore, ChannelStoreContext } from './stores/channelStore';
 import { UserStoreContext, UserStore, useUserStore } from './stores/userStore';
 
-const App = () => {
+const OnAppLoad = observer(() => {
   const userStore = useUserStore();
   useEffect(() => {
-    userStore.login().then(() => {
-      userStore.listenToCoins();
-    });
+    userStore.autoLogin();
   }, []);
-  return (
-    <Router>
-      <Switch>
-        <Route path="/twitch/:channelName"><TwitchChannelPage /></Route>
-        <Route path="/"><HomePage /></Route>
-      </Switch>
-    </Router>
-  );
-};
+
+  useEffect(() => {
+    if (userStore.loggedIn) {
+      const unsub = userStore.listenToCoins();
+      return () => (unsub ? unsub() : null);
+    }
+    return undefined;
+  }, [userStore.loggedIn]);
+  return null;
+});
+
+const App = () => (
+  <Router>
+    <OnAppLoad />
+    <Switch>
+      <Route path="/twitch/:channelName"><TwitchChannelPage /></Route>
+      <Route path="/"><HomePage /></Route>
+    </Switch>
+  </Router>
+);
 
 const AppWithContext = () => (
   <UserStoreContext.Provider value={new UserStore()}>

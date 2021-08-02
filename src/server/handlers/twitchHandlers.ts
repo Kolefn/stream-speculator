@@ -221,7 +221,7 @@ export const handleTwitchWebhook = async (headers: IncomingHttpHeaders, rawBody:
         a[b.id] = b;
         return a;
       }, {}),
-      status: event.status,
+      status: event.status ?? 'active',
       winningOutcomeId: event.winning_outcome_id,
       startedAt: new Date(event.started_at).getTime(),
       locksAt: new Date(event.locks_at).getTime(),
@@ -324,7 +324,10 @@ export const handleTaskStreamEvent = async (
         DB.update(DB.scheduledTasks.doc(TaskType.MonitorStreams.toString()),
           { streamsChanged: true }),
         DB.update(DB.channels.doc(event.channelId), { isLive: false }),
-        DB.firstPage(DB.predictions.withRefsTo([{ collection: DB.channels, id: event.channelId }])),
+        DB.firstPage(DB.predictions.withMulti([
+          { field: 'channelRef', value: DB.channels.doc(event.channelId) },
+          { field: 'status', value: 'active' },
+        ])),
       ),
     );
 

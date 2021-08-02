@@ -8,7 +8,8 @@ const exec = promisify(childProcess.exec);
 
 process.env.PUBLIC_FOLDER_PATH = 'src/public';
 process.env.LOCAL = 'true';
-
+process.env.TWITCH_REDIRECT_URI='http://localhost:8080/api/twitch/redirectFrom';
+processe.env.HOME_PAGE_URL='http://localhost:8080';
 
 let clientBundling = false;
 const clientWatcher = chokidar.watch('./src').on('all', async () => {

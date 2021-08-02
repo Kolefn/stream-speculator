@@ -17,6 +17,11 @@ class DBCollection {
     return q.Match(q.Index(`${this.name}_by_${field}`), value);
   }
 
+  withMulti(items: { field: string, value: any }[]) : faunadb.Expr {
+    const indexName = `${this.name}_by_${items.map((i) => i.field).join('_')}`;
+    return q.Match(q.Index(indexName), ...items.map((i) => i.value));
+  }
+
   withRefsTo(refs: { collection: DBCollection, id: string }[]) : faunadb.Expr {
     const fields = refs.map((ref) => {
       let field = ref.collection.name.toLowerCase();
@@ -178,11 +183,14 @@ export default class DBClient {
   static refify(data: { [key: string]: any }) : { [key: string] : any } {
     const docData: any = {};
     Object.keys(data).forEach((k) => {
-      if (k.indexOf('Id') > -1) {
+      if (k.indexOf('Id') > -1 && k.charAt(0) !== '_') {
         const collectionSingular = k.split('Id')[0];
         let collectionPlural = `${collectionSingular}s`;
         collectionPlural = collectionPlural.charAt(0).toUpperCase() + collectionPlural.slice(1);
         docData[`${collectionSingular}Ref`] = q.Ref(q.Collection(collectionPlural), data[k]);
+      } else if (k.charAt(0) === '_') {
+        const s = k.slice(1);
+        docData[s] = data[k];
       } else {
         docData[k] = data[k];
       }
@@ -198,7 +206,7 @@ export default class DBClient {
     }, {});
   }
 
-  static fromNow(offset: number, unit: 'days' | 'seconds') : faunadb.Expr {
+  static fromNow(offset: number, unit: 'days' | 'seconds' | 'hours') : faunadb.Expr {
     return q.TimeAdd(q.Now(), offset, unit);
   }
 
@@ -404,6 +412,10 @@ export default class DBClient {
 
   static getSortedResults(set: faunadb.Expr) : faunadb.Expr {
     return q.Map(set, q.Lambda(['field1', 'ref'], q.Get(q.Var('ref'))));
+  }
+
+  static getSortedRefs(set: faunadb.Expr) : faunadb.Expr {
+    return q.Map(set, q.Lambda(['field1', 'ref'], q.Var('ref')));
   }
 
   async exec<T>(expr: faunadb.Expr) : Promise<T> {
