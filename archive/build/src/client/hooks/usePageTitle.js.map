@@ -1,0 +1,1 @@
+{"version":3,"file":"usePageTitle.js","sourceRoot":"","sources":["../../../../src/client/hooks/usePageTitle.ts"],"names":[],"mappings":";;AAAA,iCAAkC;AAElC,kBAAe,CAAC,KAAa,EAAE,EAAE;IAC/B,iBAAS,CAAC,GAAG,EAAE;QACb,QAAQ,CAAC,KAAK,GAAG,KAAK,CAAC;IACzB,CAAC,EAAE,CAAC,KAAK,CAAC,CAAC,CAAC;AACd,CAAC,CAAC"}

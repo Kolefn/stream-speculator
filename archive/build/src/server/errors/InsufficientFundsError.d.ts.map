@@ -1,0 +1,1 @@
+{"version":3,"file":"InsufficientFundsError.d.ts","sourceRoot":"","sources":["../../../../src/server/errors/InsufficientFundsError.ts"],"names":[],"mappings":"AAAA,MAAM,CAAC,OAAO,OAAO,sBAAuB,SAAQ,KAAK;gBAC3C,YAAY,EAAE,MAAM;CAGjC"}
