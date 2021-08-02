@@ -99,6 +99,50 @@
           }
         }
       }
+    },
+    "server": {
+      "root": "apps/server",
+      "projectType": "application",
+      "sourceRoot": "apps/server/src",
+      "targets": {
+        "build": {
+          "executor": "@ns3/nx-serverless:build",
+          "outputs": ["{options.outputPath}"],
+          "options": {
+            "outputPath": "apps/server/.serverless"
+          }
+        },
+        "serve": {
+          "executor": "@ns3/nx-serverless:serve",
+          "options": {
+            "out": "../../dist/out-tsc/apps/server"
+          }
+        },
+        "deploy": {
+          "executor": "@ns3/nx-serverless:deploy",
+          "outputs": ["{options.outputPath}"],
+          "options": {
+            "outputPath": "apps/server/.serverless"
+          }
+        },
+        "remove": {
+          "executor": "@ns3/nx-serverless:remove"
+        },
+        "test": {
+          "executor": "@nrwl/jest:jest",
+          "outputs": ["coverage/apps/server"],
+          "options": {
+            "jestConfig": "apps/server/jest.config.js",
+            "passWithNoTests": true
+          }
+        },
+        "lint": {
+          "executor": "@nrwl/linter:eslint",
+          "options": {
+            "lintFilePatterns": ["apps/server/src/**/*.{ts,tsx,js,jsx}"]
+          }
+        }
+      }
     }
   },
   "cli": {
