@@ -20,9 +20,8 @@ import { HTMLElementRefOf } from '@plasmicapp/react-web';
 //
 // You can also stop extending from DefaultHomepageProps altogether and have
 // total control over the props for your component.
-interface HomepageProps extends DefaultHomepageProps {}
 
-function Homepage_(props: HomepageProps, ref: HTMLElementRefOf<'div'>) {
+function Homepage_(props: DefaultHomepageProps, ref: HTMLElementRefOf<'div'>) {
   // Use PlasmicHomepage to render this component as it was
   // designed in Plasmic, by activating the appropriate variants,
   // attaching the appropriate event handlers, etc.  You
