@@ -27,6 +27,9 @@
     ]
   },
   "projects": {
+    "api": {
+      "tags": []
+    },
     "client": {
       "tags": []
     },
@@ -38,6 +41,9 @@
       "tags": []
     },
     "server": {
+      "tags": []
+    },
+    "state": {
       "tags": []
     },
     "ui": {

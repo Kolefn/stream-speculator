@@ -24,6 +24,7 @@ export type TwitchStream = {
   id: string;
   startedAt: UnixEpochTime;
   viewerCount: number;
+  title?: string;
 };
 
 export type TwitchChannel = {
@@ -31,6 +32,7 @@ export type TwitchChannel = {
   displayName: string;
   userName: string;
   isLive: boolean;
+  profileImageUrl?: string;
   stream?: TwitchStream;
   predictionUpdate?: Partial<Prediction>;
 };

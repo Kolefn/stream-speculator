@@ -11,6 +11,7 @@ import {
 } from './handlers/authHandlers';
 import { getTwitchChannelPageData, handleTwitchWebhook } from './handlers/twitchHandlers';
 import { handleBet, betRequestValidator } from './handlers/predictionHandlers';
+import taskRouter from './handlers/taskRouter';
 
 declare global {
   namespace Express {
@@ -24,6 +25,10 @@ declare global {
 const dbClient = new DBClient(process.env.FAUNADB_SECRET as string);
 const twitch = new TwitchClient(dbClient);
 const scheduler = new Scheduler();
+
+if(process.env.IS_OFFLINE){
+  Scheduler.localHandler = (task) => taskRouter([task]);
+}
 
 const buildHandler = <T>(responder: (req:Request, res:Response) => Promise<Record<string, any> | APIResponse<T>>,
   validators?: RequestHandler[])

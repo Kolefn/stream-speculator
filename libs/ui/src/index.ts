@@ -1,1 +1,2 @@
-export * from './lib/Homepage';
+export * from './lib/components';
+export * from './lib/pages';

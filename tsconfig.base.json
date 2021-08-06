@@ -16,7 +16,9 @@
     "skipDefaultLibCheck": true,
     "baseUrl": ".",
     "paths": {
+      "@stream-speculator/api": ["libs/api/src/index.ts"],
       "@stream-speculator/common": ["libs/common/src/index.ts"],
+      "@stream-speculator/state": ["libs/state/src/index.ts"],
       "@stream-speculator/ui": ["libs/ui/src/index.ts"]
     }
   },

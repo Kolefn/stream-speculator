@@ -27,14 +27,14 @@ const routingTable: { [key:string]: (task:ScheduledTask) => Promise<void> } = {
     scheduler,
   ),
 };
-export default (event: any) => {
+export default async (event: any) : Promise<void> => {
   let tasks = [];
   if (event.Records) {
     tasks = event.Records.map((r: any) => JSON.parse(r.body));
   } else {
     tasks = event;
   }
-  return Promise.allSettled(tasks.map(async (task: ScheduledTask) => {
+  await Promise.allSettled(tasks.map(async (task: ScheduledTask) => {
     try {
       await routingTable[task.type](task);
     } catch (e) {
