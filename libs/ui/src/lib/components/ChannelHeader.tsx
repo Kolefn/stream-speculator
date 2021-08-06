@@ -7,7 +7,7 @@ import ChannelTitle from './ChannelTitle';
 const ChannelHeader = () => {
   const store = useChannelStore();
   return (
-    <HStack direction="row" spacing="10px" w="100%">
+    <HStack direction="row" spacing="15px" w="100%" alignItems="flex-start">
       <ChannelProfile />
       <Stack spacing="5px" w="100%">
         <ChannelTitle />

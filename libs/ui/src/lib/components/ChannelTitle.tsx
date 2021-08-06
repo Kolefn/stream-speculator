@@ -7,13 +7,15 @@ const ChannelTitle = observer(() => {
   return (
     <Stack spacing="5px">
       {store.channel ? (
-        <Heading size="lg">{store.channel?.displayName}</Heading>
+        <Heading size="md">{store.channel?.displayName}</Heading>
       ) : (
         <Skeleton h="20px" w="80px" />
       )}
       {store.channel ? (
         store.channel?.stream && (
-          <Heading size="sm">{store.channel?.stream?.title}</Heading>
+          <Heading size="xs" color="whiteAlpha.900" fontWeight="normal">
+            {store.channel?.stream?.title}
+          </Heading>
         )
       ) : (
         <Skeleton h="20px" w="200px" />
