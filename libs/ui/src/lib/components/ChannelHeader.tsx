@@ -1,10 +1,11 @@
-import { Flex, HStack, Stack } from '@chakra-ui/react';
+import { HStack, Stack } from '@chakra-ui/react';
 import { useChannelStore } from '@stream-speculator/state';
+import { observer } from 'mobx-react-lite';
 import ChannelMetaBar from './ChannelMetaBar';
 import ChannelProfile from './ChannelProfile';
 import ChannelTitle from './ChannelTitle';
 
-const ChannelHeader = () => {
+const ChannelHeader = observer(() => {
   const store = useChannelStore();
   return (
     <HStack direction="row" spacing="15px" w="100%" alignItems="flex-start">
@@ -15,6 +16,6 @@ const ChannelHeader = () => {
       </Stack>
     </HStack>
   );
-};
+});
 
 export default ChannelHeader;

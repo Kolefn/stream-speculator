@@ -1,6 +1,7 @@
 import { Stat, StatGroup, StatLabel, StatNumber } from '@chakra-ui/react';
 import { useChannelStore } from '@stream-speculator/state';
 import { observer } from 'mobx-react-lite';
+import Uptime from './Uptime';
 
 const ChannelMetaBar = observer(() => {
   const store = useChannelStore();
@@ -11,7 +12,7 @@ const ChannelMetaBar = observer(() => {
         <StatLabel fontSize="xs" color="whiteAlpha.500">
           Uptime
         </StatLabel>
-        <StatNumber fontSize="s">1h 33m 13s</StatNumber>
+        <Uptime startTime={store.channel?.stream?.startedAt ?? 0} />
       </Stat>
 
       <Stat>

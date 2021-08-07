@@ -32,6 +32,8 @@ export class ChannelStore {
 
   predictions: Prediction[] = [];
 
+  selectedOutcomeId?: string;
+
   constructor() {
     makeAutoObservable(this);
   }
@@ -92,6 +94,10 @@ export class ChannelStore {
       { includeSnapshot: true },
     );
   }
+
+  setSelectedOutcomeId = (val?: string) => {
+    this.selectedOutcomeId = val;
+  };
 }
 
 export const ChannelStoreContext = createContext<ChannelStore>({} as ChannelStore);
