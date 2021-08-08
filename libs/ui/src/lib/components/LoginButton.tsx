@@ -1,15 +1,18 @@
 import { Button } from '@chakra-ui/react';
+import { Link } from 'react-router-dom';
 import { TwitchPurpleLight } from '../colors';
 import TwitchIcon from '../icons/TwitchIcon';
 
 const LoginButton = () => {
   return (
     <Button
+      as={Link}
       leftIcon={<TwitchIcon color="whiteAlpha.800" />}
       color="whiteAlpha.800"
       borderColor={TwitchPurpleLight}
       variant="outline"
-      aria-label="Twitch Login"
+      aria-label="Login with Twitch"
+      to={'/api/twitch/redirectTo'}
     >
       Login
     </Button>

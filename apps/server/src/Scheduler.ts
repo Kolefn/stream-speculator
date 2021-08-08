@@ -1,7 +1,8 @@
 import SQSClient from 'aws-sdk/clients/sqs';
 import { DBClient as DB } from '@stream-speculator/common';
+import { FAUNADB_SECRET, IS_OFFLINE, REGION, SQS_QUEUE_URL } from './environment';
 
-const db = new DB(process.env.FAUNADB_SECRET as string);
+const db = new DB(FAUNADB_SECRET as string);
 
 const MAX_DELAY_SECONDS = 60 * 15;
 
@@ -67,7 +68,7 @@ export default class Scheduler {
 
   constructor() {
     this.client = new SQSClient({
-      region: process.env.REGION,
+      region: REGION,
     });
   }
 
@@ -83,12 +84,12 @@ export default class Scheduler {
       }
     }
 
-    if (process.env.IS_OFFLINE) {
+    if (IS_OFFLINE) {
       setTimeout(() => Scheduler.localHandler(task), getDelaySeconds(task) * 1000);
       return true;
     }
     await this.client.sendMessage({
-      QueueUrl: process.env.SQS_QUEUE_URL as string,
+      QueueUrl: SQS_QUEUE_URL as string,
       MessageBody: JSON.stringify(task),
       DelaySeconds: getDelaySeconds(task),
     }).promise();
@@ -118,13 +119,13 @@ export default class Scheduler {
       return;
     }
 
-    if (process.env.LOCAL) {
+    if (IS_OFFLINE) {
       tasks.forEach((task) => {
         setTimeout(() => Scheduler.localHandler(task), getDelaySeconds(task) * 1000);
       });
     } else {
       await this.client.sendMessageBatch({
-        QueueUrl: process.env.SQS_QUEUE_URL as string,
+        QueueUrl: SQS_QUEUE_URL as string,
         Entries: tasks.map((task, i) => ({
           Id: `${task.type}${i}`,
           MessageBody: JSON.stringify(task),

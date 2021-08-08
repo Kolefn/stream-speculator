@@ -5,6 +5,7 @@ import { BasicPubSubClient } from 'twitch-pubsub-client';
 import Cryptr from 'cryptr';
 import { DBClient, StreamMetric, StreamMetricType } from '@stream-speculator/common';
 import TwitchAuthProvider from './TwitchAuthProvider';
+import { TWITCH_WEBHOOK_SECRET, TWITCH_WEBHOOK_CALLBACK, TWITCH_CLIENT_ID, TWITCH_CLIENT_SECRET, TWITCH_TOKEN_ENCRYPTION_KEY } from './environment';
 
 type PubSubViewerCountMessageData = {
   type: 'viewcount' | 'commercial';
@@ -15,8 +16,8 @@ type PubSubViewerCountMessageData = {
 type StreamMetricUpdateByChannel = { [channelId: string] : StreamMetric };
 
 const EVENTSUB_OPTIONS: HelixEventSubTransportOptions = {
-  secret: process.env.TWITCH_WEBHOOK_SECRET as string,
-  callback: process.env.TWITCH_WEBHOOK_CALLBACK as string,
+  secret: TWITCH_WEBHOOK_SECRET as string,
+  callback: TWITCH_WEBHOOK_CALLBACK as string,
   method: 'webhook',
 };
 
@@ -33,8 +34,8 @@ export default class TwitchClient {
 
   constructor(dbClient: DBClient) {
     this.auth = new TwitchAuthProvider(
-      process.env.TWITCH_CLIENT_ID as string,
-      process.env.TWITCH_CLIENT_SECRET as string,
+      TWITCH_CLIENT_ID as string,
+      TWITCH_CLIENT_SECRET as string,
       dbClient,
     );
     this.pubsub = new BasicPubSubClient();
@@ -134,7 +135,7 @@ export default class TwitchClient {
   }
 
   static encryptToken(token: AccessToken) : string {
-    return new Cryptr(process.env.TWITCH_TOKEN_ENCRYPTION_KEY as string).encrypt(JSON.stringify({
+    return new Cryptr(TWITCH_TOKEN_ENCRYPTION_KEY as string).encrypt(JSON.stringify({
       accessToken: token.accessToken,
       refreshToken: token.refreshToken,
       expiresAt: token.expiryDate?.getTime(),

@@ -1,4 +1,5 @@
 import { Response } from 'express';
+import { DOMAIN_NAME, IS_OFFLINE } from './environment';
 
 export default class Cookie {
   name: string;
@@ -17,9 +18,9 @@ export default class Cookie {
     res.cookie(this.name, JSON.stringify(this.data), {
       httpOnly: true,
       expires: new Date(Date.now() + this.ttlMs),
-      secure: Boolean(!process.env.IS_OFFLINE),
+      secure: Boolean(!IS_OFFLINE),
       sameSite: 'lax',
-      domain: process.env.IS_OFFLINE ? undefined : process.env.DOMAIN_NAME,
+      domain: IS_OFFLINE ? undefined : DOMAIN_NAME,
       signed: true,
     });
   }

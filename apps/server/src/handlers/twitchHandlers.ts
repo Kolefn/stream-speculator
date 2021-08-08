@@ -16,6 +16,7 @@ import Scheduler, { ScheduledTask, StreamMonitoringInitialTask, TaskType } from 
 import TwitchClient from '../TwitchClient';
 import APIResponse from '../APIResponse';
 import { createPrediction } from '../augmentation';
+import { TWITCH_WEBHOOK_SECRET, IS_OFFLINE } from '../environment';
 
 interface EventSubSubscriptionBody {
   id: string;
@@ -180,7 +181,7 @@ export const handleTwitchWebhook = async (headers: IncomingHttpHeaders, rawBody:
   const [algorithm, signature] = algoSig.split('=', 2);
 
   if (crypto
-    .createHmac(algorithm, process.env.TWITCH_WEBHOOK_SECRET as string)
+    .createHmac(algorithm, TWITCH_WEBHOOK_SECRET as string)
     .update(messageId + timestamp + rawBody)
     .digest('hex') !== signature) {
     return new APIResponse({ status: 401 });
@@ -258,7 +259,7 @@ export const handleTaskMonitorChannel = async (
   data: { channelId: string },
   twitch: TwitchClient,
 ) => {
-  if (!process.env.IS_OFFLINE) {
+  if (!IS_OFFLINE) {
     await twitch.subToChannelEvents(data.channelId);
   }
 };

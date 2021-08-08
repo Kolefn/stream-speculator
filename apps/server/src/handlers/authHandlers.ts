@@ -7,6 +7,7 @@ import { DBClient as DB, FaunaTokenDoc, FaunaDoc,
 import UnAuthorizedError from '../errors/UnAuthorizedError';
 import TwitchClient from '../TwitchClient';
 import NotFoundError from '../errors/NotFoundError';
+import { TWITCH_CLIENT_ID, TWITCH_REDIRECT_URI, TWITCH_CLIENT_SECRET, HOME_PAGE_URL } from '../environment';
 
 const GUEST_TTL_DAYS = 7;
 const GUEST_TTL_MS = GUEST_TTL_DAYS * 86400 * 1000;
@@ -101,7 +102,7 @@ export const redirectToTwitchLogin = async (session: AuthSession | null, referre
   const state = crypto.randomBytes(3).toString('hex');
   return new APIResponse<any>({
     data: {},
-    redirect: `https://id.twitch.tv/oauth2/authorize?client_id=${process.env.TWITCH_CLIENT_ID}&redirect_uri=${process.env.TWITCH_REDIRECT_URI}&response_type=code&state=${state}`,
+    redirect: `https://id.twitch.tv/oauth2/authorize?client_id=${TWITCH_CLIENT_ID}&redirect_uri=${TWITCH_REDIRECT_URI}&response_type=code&state=${state}`,
     cookies: [
       new Cookie(
         'session',
@@ -131,13 +132,13 @@ export const redirectFromTwitchLogin = async (
   }
 
   const token = await exchangeCode(
-    process.env.TWITCH_CLIENT_ID as string,
-    process.env.TWITCH_CLIENT_SECRET as string,
+    TWITCH_CLIENT_ID as string,
+    TWITCH_CLIENT_SECRET as string,
     code,
-    process.env.TWITCH_REDIRECT_URI as string,
+    TWITCH_REDIRECT_URI as string,
   );
 
-  const tokenInfo = await getTokenInfo(token.accessToken, process.env.TWITCH_CLIENT_ID as string);
+  const tokenInfo = await getTokenInfo(token.accessToken, TWITCH_CLIENT_ID as string);
 
   const { user } = await db.exec<{ user: FaunaDoc }>(
     DB.named({
@@ -161,7 +162,7 @@ export const redirectFromTwitchLogin = async (
   );
   return new APIResponse<any>({
     data: {},
-    redirect: session.referrer ?? process.env.HOME_PAGE_URL,
+    redirect: session.referrer ?? HOME_PAGE_URL,
     cookies: [
       new Cookie(
         'session',

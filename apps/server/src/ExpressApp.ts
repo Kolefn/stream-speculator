@@ -12,6 +12,7 @@ import {
 import { getTwitchChannelPageData, handleTwitchWebhook } from './handlers/twitchHandlers';
 import { handleBet, betRequestValidator } from './handlers/predictionHandlers';
 import taskRouter from './handlers/taskRouter';
+import { COOKIE_SIGNING_KEY, FAUNADB_SECRET, IS_OFFLINE, PUBLIC_FOLDER_PATH } from './environment';
 
 declare global {
   namespace Express {
@@ -22,11 +23,11 @@ declare global {
   }
 }
 
-const dbClient = new DBClient(process.env.FAUNADB_SECRET as string);
+const dbClient = new DBClient(FAUNADB_SECRET as string);
 const twitch = new TwitchClient(dbClient);
 const scheduler = new Scheduler();
 
-if(process.env.IS_OFFLINE){
+if(IS_OFFLINE){
   Scheduler.localHandler = (task) => taskRouter([task]);
 }
 
@@ -62,7 +63,7 @@ ExpressApp.use((req, _res, next) => {
 });
 
 ExpressApp.use(express.json());
-ExpressApp.use(cookieParser(process.env.COOKIE_SIGNING_KEY as string));
+ExpressApp.use(cookieParser(COOKIE_SIGNING_KEY as string));
 ExpressApp.use((req, _res, next) => {
   try {
     req.session = JSON.parse(req.signedCookies.session);
@@ -94,10 +95,10 @@ ExpressApp.post('/api/twitch/webhook', buildHandler((req) => handleTwitchWebhook
 
 ExpressApp.post('/api/bet', buildHandler((req) => handleBet(req.session, req.body, dbClient)), betRequestValidator);
 
-ExpressApp.use(express.static(process.env.PUBLIC_FOLDER_PATH as string));
+ExpressApp.use(express.static(PUBLIC_FOLDER_PATH as string));
 
 ExpressApp.get('/twitch/:channelName', (_req, res) => {
-  res.sendFile(path.resolve(process.cwd(), `${process.env.PUBLIC_FOLDER_PATH}/index.html`));
+  res.sendFile(path.resolve(process.cwd(), `${PUBLIC_FOLDER_PATH}/index.html`));
 });
 
 export default ExpressApp;
