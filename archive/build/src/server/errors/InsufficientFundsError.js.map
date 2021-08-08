@@ -1,1 +1,0 @@
-{"version":3,"file":"InsufficientFundsError.js","sourceRoot":"","sources":["../../../../src/server/errors/InsufficientFundsError.ts"],"names":[],"mappings":";;AAAA,MAAqB,sBAAuB,SAAQ,KAAK;IACvD,YAAY,YAAoB;QAC9B,KAAK,CAAC,wBAAwB,YAAY,GAAG,CAAC,CAAC;IACjD,CAAC;CACF;AAJD,yCAIC"}
