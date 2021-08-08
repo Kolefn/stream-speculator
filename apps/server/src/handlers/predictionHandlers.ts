@@ -149,43 +149,18 @@ export const handleTaskPredictionEvent = async (
       await scheduler.schedule({
         type: TaskType.PredictionEvent,
         data: {
-          type: 'lock',
+          type: 'end',
           prediction: event.prediction,
         },
         when: [
           {
-            timestamp: event.prediction.locksAt,
+            timestamp: event.prediction.augmentation.endsAt,
           },
         ],
       });
     }
   } else if (event.type === 'progress' || event.type === 'lock') {
     if (event.prediction.augmentation && event.type === 'lock') {
-      const viewerCount = await db.exec<number>(
-        DB.getField(
-          DB.streamMetric(event.prediction.channelId, StreamMetricType.ViewerCount),
-          'value',
-        ),
-      );
-      await scheduler.scheduleBatch([{
-        type: TaskType.PredictionEvent,
-        data: {
-          type: 'end',
-          prediction: {
-            ...event.prediction,
-            winningOutcomeId: getWinningOutcomeId(
-              event.prediction,
-              viewerCount,
-            ),
-            status: 'resolved',
-          },
-        },
-      }, {
-        type: TaskType.CreatePrediction,
-        data: {
-          channelId: event.prediction.channelId,
-        },
-      }]);
       return;
     }
 
@@ -211,25 +186,53 @@ export const handleTaskPredictionEvent = async (
       )),
     );
   } else if (event.type === 'end') {
-    const update: Partial<Prediction> = {
-      winningOutcomeId: event.prediction.winningOutcomeId,
-      status: event.prediction.status,
+    const update: Partial<Prediction> = event.prediction.status === 'canceled' ? {
+      status: 'canceled',
+      endedAt: Date.now(),
+    } : {
+      winningOutcomeId: getWinningOutcomeId(
+        event.prediction,
+        await db.exec<number>(
+          DB.getField(
+            DB.streamMetric(event.prediction.channelId, StreamMetricType.ViewerCount),
+            'value',
+          ),
+        ),
+      ),
+      status: 'resolved',
       endedAt: Date.now(),
     };
 
     const predictionId = event.prediction.id;
     const { status, outcomes, winningOutcomeId } = await db.exec<Prediction>(
-      DB.defineVars({
-        updatedPrediction: DB.update(DB.predictions.doc(event.prediction.id), update),
-      },
-      DB.batch(
-        DB.update(
-          DB.channels.doc(event.prediction.channelId),
-          { predictionUpdate: DB.merge(NULL_PREDICTION, DB.varSelect('updatedPrediction', ['data'])) },
-        ),
-        DB.varSelect('updatedPrediction', ['data']),
-      )),
+      DB.ifEqual(
+        DB.getField(DB.predictions.doc(event.prediction.id), 'status'), 
+        'active',
+        DB.defineVars({
+          updatedPrediction: DB.update(DB.predictions.doc(event.prediction.id), update),
+        },
+        DB.batch(
+          DB.update(
+            DB.channels.doc(event.prediction.channelId),
+            { predictionUpdate: DB.merge(NULL_PREDICTION, DB.varSelect('updatedPrediction', ['data'])) },
+          ),
+          DB.varSelect('updatedPrediction', ['data']),
+        )),
+        DB.varSelect('fieldDoc', ['data']),
+      )
     );
+
+    if(status !== update.status){
+      //already ended by different event (e.g. canceled before resolve)
+      return;
+    }
+
+    scheduler.schedule({
+        type: TaskType.CreatePrediction,
+        data: {
+          channelId: event.prediction.channelId,
+        },
+      });
 
     const payoutRatios: { [key:string]: number } = {};
     if (status === 'resolved') {

@@ -126,10 +126,12 @@ export const getTwitchChannelPageData = async (params:
           displayName: stream.userDisplayName,
           userName: stream.userName,
           isLive: true,
+          profileImageUrl: (await stream.getUser()).profilePictureUrl,
           stream: {
             id: stream.id,
             startedAt: stream.startDate.getTime(),
             viewerCount: stream.viewers,
+            title: stream.title,
           },
         }),
       ),
@@ -306,15 +308,18 @@ export const handleTaskStreamEvent = async (
   event: StreamEvent,
   scheduler: Scheduler,
   db: DB,
+  twitch: TwitchClient
 ) => {
   if (event.type === 'stream.online') {
     const onlineEvent = (event as StreamOnlineEvent);
-    const update = {
+    const streamInfo = await twitch.api.helix.streams.getStreamByUserId(onlineEvent.channelId);
+    const update: Partial<TwitchChannel> = {
       isLive: true,
       stream: {
         id: onlineEvent.streamId,
+        title: streamInfo.title,
         startedAt: new Date(onlineEvent.startedAt).getTime(),
-        viewerCount: 0,
+        viewerCount: streamInfo.viewers,
       },
     };
     await db.exec(DB.update(DB.channels.doc(event.channelId), update));
