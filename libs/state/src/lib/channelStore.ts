@@ -1,9 +1,9 @@
 import { createContext, useContext } from 'react';
 import { makeAutoObservable, runInAction } from 'mobx';
-import { getTwitchChannelPageData } from '@stream-speculator/api';
+import { getTwitchChannelPageData, postBet } from '@stream-speculator/api';
 import {
   Prediction, PredictionOutcome, StreamMetricPoint, StreamMetricType, TwitchChannel,
-  fillPointGaps, DBClient
+  fillPointGaps, DBClient, Bet, getPersonalNet
 } from '@stream-speculator/common';
 
 const updatePrediction = (
@@ -32,6 +32,8 @@ export class ChannelStore {
 
   predictions: Prediction[] = [];
 
+  bets: Bet[] = [];
+
   selectedOutcomeId?: string;
 
   constructor() {
@@ -50,6 +52,7 @@ export class ChannelStore {
         this.channel = result.channel;
         this.viewerCount = result.metrics?.viewerCount ?? this.viewerCount;
         this.predictions = result.predictions ?? this.predictions;
+        this.bets = result.bets ?? this.bets;
       });
     } catch (e) {
       runInAction(() => {
@@ -75,17 +78,20 @@ export class ChannelStore {
     return dbClient?.onChange(
       DBClient.channels.doc(this.channel?.id ?? ''),
       (data) => {
-        const update = (data.document.data as TwitchChannel).predictionUpdate as Prediction;
+        let update = (data.document.data as TwitchChannel).predictionUpdate as Prediction;
         if (!update) {
           return;
         }
         runInAction(() => {
           const index = this.predictions.findIndex((p) => p.id === update.id);
           if (index > -1) {
-            this.predictions[index] = updatePrediction(
+            update = this.predictions[index] = updatePrediction(
               this.predictions[index],
               update,
             );
+            if(update.status === 'resolved'){
+              this.predictions[index].personalNet = getPersonalNet(update, this.bets);
+            }
           } else {
             this.predictions.unshift(update);
           }
@@ -95,9 +101,19 @@ export class ChannelStore {
     );
   }
 
-  setSelectedOutcomeId = (val?: string) => {
+  setSelectedOutcomeId(val?: string) {
     this.selectedOutcomeId = val;
   };
+
+  async bet(predictionId: string, outcomeId: string, coins: number) : Promise<void> {
+    return postBet({ predictionId, outcomeId, coins }).then((bet)=> {
+      runInAction(()=> {
+        this.bets.push(bet);
+        const index = this.predictions.findIndex((p)=> p.id === predictionId);
+        this.predictions[index].outcomes[outcomeId].personalBet = bet.coins;
+      });
+    });
+  }
 }
 
 export const ChannelStoreContext = createContext<ChannelStore>({} as ChannelStore);

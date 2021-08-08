@@ -80,7 +80,7 @@ export enum AugmentationType {
 }
 
 export type AugmentationDetails = {
-  type: AugmentationType,
+  type: AugmentationType;
   data?: any;
 };
 

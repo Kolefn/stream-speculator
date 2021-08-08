@@ -1,4 +1,7 @@
 import {
+  Bet,
+  Prediction,
+  PredictionOutcome,
   StreamMetricPoint,
 } from './types';
 
@@ -29,6 +32,28 @@ export const fillPointGaps = (points: Points)
 
   return filled;
 };
+
+export const getPayoutPerCoin = (outcomeId: string, outcomes: { [key: string]: PredictionOutcome }) : number => {
+  const selected = outcomes[outcomeId];
+  const sTotal = channelPointsToCoins(selected.channelPoints) + selected.coins;
+  const otherTotal = Object.values(outcomes).filter((o)=> o.id !== outcomeId).reduce((n, o)=> channelPointsToCoins(o.channelPoints) + o.coins + n, 0);
+  return otherTotal / sTotal;
+};
+
+export const getPersonalNet = (p: Prediction, bets: Bet[]) : number => {
+  if(p.status !== 'resolved'){
+    return 0;
+  }
+  return bets.filter((b)=> b.predictionId === p.id)
+            .reduce((net, b)=> {
+              if(b.outcomeId === p.winningOutcomeId){
+                return net + (getPayoutPerCoin(b.outcomeId, p.outcomes) * b.coins)
+              }else{
+                return net - b.coins;
+              }
+            }, 0);
+};
+
 
 // export const getProjectedDelta = (points: Points, window: PredictionWindow)
 // : PointsDelta => {

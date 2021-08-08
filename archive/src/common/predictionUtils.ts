@@ -1,4 +1,7 @@
 import {
+  Bet,
+  Prediction,
+  PredictionOutcome,
   StreamMetricPoint,
 } from './types';
 
@@ -29,7 +32,6 @@ export const fillPointGaps = (points: Points)
 
   return filled;
 };
-
 // export const getProjectedDelta = (points: Points, window: PredictionWindow)
 // : PointsDelta => {
 //   if (points.length <= 1) {

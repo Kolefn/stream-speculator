@@ -8,9 +8,9 @@ import ChannelTitle from './ChannelTitle';
 const ChannelHeader = observer(() => {
   const store = useChannelStore();
   return (
-    <HStack direction="row" spacing="15px" w="100%" alignItems="flex-start">
+    <HStack direction="row" spacing="15px" alignItems="flex-start">
       <ChannelProfile />
-      <Stack spacing="5px" w="100%">
+      <Stack spacing="5px">
         <ChannelTitle />
         {store.channel?.isLive && <ChannelMetaBar />}
       </Stack>

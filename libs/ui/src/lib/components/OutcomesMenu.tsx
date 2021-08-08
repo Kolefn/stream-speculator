@@ -5,6 +5,8 @@ import {
   Flex,
   Heading,
   Stack,
+  Wrap,
+  WrapItem,
 } from '@chakra-ui/react';
 import { PredictionOutcome } from '@stream-speculator/common';
 import { useChannelStore, useUserStore } from '@stream-speculator/state';
@@ -69,8 +71,9 @@ const OutcomesMenu = observer(
         return (
           <Button
             disabled={disabled}
-            leftIcon={<CoinIcon />}
+            leftIcon={<CoinIcon color="whiteAlpha.800" />}
             size="xs"
+            variant="outline"
             onClick={() => {
               setMenu(MENUS.LOADING);
               if (channel.selectedOutcomeId) {
@@ -90,21 +93,38 @@ const OutcomesMenu = observer(
 
     const betOptions = useMemo(() => {
       return (
-        <ButtonGroup variant="outline" spacing="5px">
-          {user.coins / 10 >= 100 && <BetButton value={user.coins / 10} />}
-          {user.coins / 4 >= 100 && <BetButton value={user.coins / 4} />}
-          {user.coins / 2 >= 100 && <BetButton value={user.coins / 2} />}
-          <BetButton value={user.coins} />
-          <Button
-            size="xs"
-            onClick={() => {
-              setMenu(MENUS.OUTCOMES);
-              channel.setSelectedOutcomeId(undefined);
-            }}
-          >
-            Cancel
-          </Button>
-        </ButtonGroup>
+        <Wrap spacing="5px">
+          {user.coins / 10 >= 100 && (
+            <WrapItem>
+              <BetButton value={user.coins / 10} />
+            </WrapItem>
+          )}
+          {user.coins / 4 >= 100 && (
+            <WrapItem>
+              <BetButton value={user.coins / 4} />
+            </WrapItem>
+          )}
+          {user.coins / 2 >= 100 && (
+            <WrapItem>
+              <BetButton value={user.coins / 2} />
+            </WrapItem>
+          )}
+          <WrapItem>
+            <BetButton value={user.coins} />
+          </WrapItem>
+          <WrapItem>
+            <Button
+              variant="outline"
+              size="xs"
+              onClick={() => {
+                setMenu(MENUS.OUTCOMES);
+                channel.setSelectedOutcomeId(undefined);
+              }}
+            >
+              Cancel
+            </Button>
+          </WrapItem>
+        </Wrap>
       );
     }, [user.coins, BetButton]);
     switch (menu) {

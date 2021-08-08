@@ -43,6 +43,7 @@ export type TwitchChannelPageData = {
     viewerCount?: StreamMetricPoint[];
   }
   predictions?: Prediction[],
+  bets?: Bet[],
 };
 
 export enum StreamMetricType {
@@ -74,6 +75,7 @@ export type PredictionOutcome = {
   channelPoints: number;
   coinUsers: number;
   coins: number;
+  personalBet?: number;
 };
 
 export enum AugmentationType {
@@ -83,6 +85,7 @@ export enum AugmentationType {
 
 export type AugmentationDetails = {
   type: AugmentationType,
+  endsAt: UnixEpochTime;
   data?: any;
 };
 
@@ -97,6 +100,7 @@ export type Prediction = {
   locksAt: UnixEpochTime;
   endedAt?: UnixEpochTime;
   augmentation?: AugmentationDetails;
+  personalNet?: number;
 };
 
 export type Bet = {
@@ -104,6 +108,7 @@ export type Bet = {
   userId: string;
   predictionId: string;
   outcomeId: string;
+  channelId: string;
   coins: number;
 };
 

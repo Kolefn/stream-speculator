@@ -33,47 +33,51 @@ const moreLessEqualViewerCount = (
   channelId: string,
   viewerCount: number,
   duration: PredictionDuration,
-) : Prediction => ({
-  augmentation: {
-    type: AugmentationType.MoreLessEqual,
-    data: viewerCount,
-  },
-  id: createPredictionId(),
-  channelId,
-  status: 'active',
-  title: `Viewer count in ${duration.label}.`,
-  startedAt: Date.now(),
-  locksAt: Date.now() + duration.ms,
-  outcomes: {
-    0: {
-      id: '0',
-      title: `More than ${viewerCount}`,
-      color: 'pink',
-      coinUsers: 0,
-      coins: OUTCOME_COINS_MIN,
-      channelPointUsers: 0,
-      channelPoints: 0,
+) : Prediction => {
+  const startedAt = Date.now();
+  return ({
+    augmentation: {
+      type: AugmentationType.MoreLessEqual,
+      data: viewerCount,
+      endsAt: startedAt + duration.ms,
     },
-    1: {
-      id: '1',
-      title: `Less than ${viewerCount}`,
-      color: 'blue',
-      coinUsers: 0,
-      coins: OUTCOME_COINS_MIN,
-      channelPointUsers: 0,
-      channelPoints: 0,
+    id: createPredictionId(),
+    channelId,
+    status: 'active',
+    title: `Viewer count in ${duration.label}.`,
+    startedAt,
+    locksAt: startedAt + (duration.ms / 5),
+    outcomes: {
+      0: {
+        id: '0',
+        title: `More than ${viewerCount}`,
+        color: 'pink',
+        coinUsers: 0,
+        coins: OUTCOME_COINS_MIN,
+        channelPointUsers: 0,
+        channelPoints: 0,
+      },
+      1: {
+        id: '1',
+        title: `Less than ${viewerCount}`,
+        color: 'blue',
+        coinUsers: 0,
+        coins: OUTCOME_COINS_MIN,
+        channelPointUsers: 0,
+        channelPoints: 0,
+      },
+      2: {
+        id: '2',
+        title: `Exactly ${viewerCount}`,
+        color: 'green',
+        coinUsers: 0,
+        coins: OUTCOME_COINS_MIN,
+        channelPointUsers: 0,
+        channelPoints: 0,
+      },
     },
-    2: {
-      id: '2',
-      title: `Exactly ${viewerCount}`,
-      color: 'green',
-      coinUsers: 0,
-      coins: OUTCOME_COINS_MIN,
-      channelPointUsers: 0,
-      channelPoints: 0,
-    },
-  },
-});
+  });
+};
 
 const increaseTargetViewerCount = (
   channelId: string,
@@ -83,17 +87,19 @@ const increaseTargetViewerCount = (
 ) : Prediction => {
   const rate = (viewerCount / uptime) * (duration.ms / uptime) * (uptime >= TEN_MINUTES_MS ? 1 : 2);
   const target = Math.floor(viewerCount + rate);
+  const startedAt = Date.now();
   return ({
     augmentation: {
       type: AugmentationType.IncreaseTarget,
       data: target,
+      endsAt: startedAt + duration.ms,
     },
     id: createPredictionId(),
     channelId,
     status: 'active',
     title: `Reach ${target} or more viewers in ${duration.label}.`,
-    startedAt: Date.now(),
-    locksAt: Date.now() + duration.ms,
+    startedAt,
+    locksAt: startedAt + (duration.ms / 5),
     outcomes: {
       0: {
         id: '0',

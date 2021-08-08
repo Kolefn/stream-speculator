@@ -23,7 +23,7 @@ const PredictionProgress = ({
       } else {
         setValue(val);
       }
-    }, 1000);
+    }, 100);
 
     return () => clearInterval(i);
   }, [start, end]);

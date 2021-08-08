@@ -7,7 +7,7 @@ const ChannelMetaBar = observer(() => {
   const store = useChannelStore();
 
   return (
-    <StatGroup maxW="400px">
+    <StatGroup>
       <Stat>
         <StatLabel fontSize="xs" color="whiteAlpha.500">
           Uptime

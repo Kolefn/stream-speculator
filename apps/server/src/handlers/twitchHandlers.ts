@@ -7,6 +7,8 @@ import {
   StreamMetricPoint, StreamMetric, Prediction, PredictionOutcome,
   FaunaDoc, FaunaDocCreate, FaunaPage, FaunaRef,
   DBClient as DB,
+  Bet,
+  getPersonalNet,
 } from '@stream-speculator/common';
 import { AuthSession } from './authHandlers';
 import NotFoundError from '../errors/NotFoundError';
@@ -74,9 +76,9 @@ export const getTwitchChannelPageData = async (params:
     }
 
     if (params.session) {
-      response.predictions = DB.deRefPage<Prediction>(
-        await params.db.exec<FaunaPage<FaunaDoc>>(
-          DB.getSortedResults(
+      const pages = await params.db.exec<{ predictions: FaunaPage<FaunaDoc>, bets: FaunaPage<FaunaDoc> }>(
+        DB.named({
+          predictions: DB.getSortedResults(
             DB.firstPage(
               DB.predictions.withRefsTo([
                 {
@@ -87,8 +89,21 @@ export const getTwitchChannelPageData = async (params:
               10,
             ),
           ),
-        ),
+          bets: DB.firstPage(DB.bets.withRefsTo([{ collection: DB.channels, id: channel.id }]), 30),
+        })
       );
+      response.predictions = DB.deRefPage<Prediction>(pages.predictions);
+      response.bets = DB.deRefPage<Bet>(pages.bets);
+      response.predictions = response.predictions.map((p)=> {
+        if(p.status === 'resolved'){
+          return {...p, personalNet: getPersonalNet(p, response.bets) };
+        }
+        return p;
+      });
+      response.bets.forEach((b)=> {
+        const index = response.predictions.findIndex((p)=> p.id === b.predictionId);
+        response.predictions[index].outcomes[b.outcomeId].personalBet = b.coins;
+      });
     }
     return new APIResponse({ status: 200, data: response });
   } catch {

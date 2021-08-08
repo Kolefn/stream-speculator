@@ -74,7 +74,9 @@ export const handleBet = async (
     ])),
     bet: DB.ifNull(
       DB.useVar('existingBet'),
-      DB.create(DB.bets, { ...request, userId: session.userId }, DB.fromNow(12, 'hours')),
+      DB.create(DB.bets, { 
+        ...request, userId: session.userId, channelId: DB.varSelect('fieldDoc', ['data', 'channelRef']) 
+      }, DB.fromNow(12, 'hours')),
       DB.addToDocFields(DB.varSelect('existingBet', ['ref']), { coins: request.coins }),
     ),
   }, DB.batch(
@@ -105,7 +107,7 @@ export const handleBet = async (
     DB.ifFieldGTE(
       DB.predictions.doc(request.predictionId),
       'locksAt',
-      Date.now() + 1000,
+      Date.now() + 500,
       DB.userCoinPurchase(
         session.userId,
         request.coins,
@@ -119,7 +121,7 @@ export const handleBet = async (
     throw new Error('Insufficient funds, or prediction is locked or does not exist.');
   }
 
-  return { ...request, userId: session.userId, id: result.ref.id };
+  return DB.deRef<Bet>(result);
 };
 
 export const handleTaskPredictionEvent = async (
@@ -242,11 +244,6 @@ export const handleTaskPredictionEvent = async (
         .filter((item: PredictionOutcome) => item.id !== winningOutcomeId)
         .map((item: PredictionOutcome) => channelPointsToCoins(item.channelPoints) + item.coins)
         .reduce((sum: number, coins: number) => coins + sum, 0);
-
-      // const participantCount = Object.values(outcomes).reduce(
-      //   (sum, outcome) => sum + outcome.coinUsers + outcome.channelPointUsers,
-      //   0,
-      // );
 
       Object.keys(outcomes).forEach((id) => {
         payoutRatios[id] = 0;

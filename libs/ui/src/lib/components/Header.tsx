@@ -4,7 +4,7 @@ import LoginButton from './LoginButton';
 
 const Header = () => {
   return (
-    <Flex bg="gray.700" direction="row" w="100%" p="8px">
+    <Flex bg="gray.700" direction="row" w="100%" p="8px" pl="20px" pr="20px">
       <CoinBalance />
       <LoginButton />
     </Flex>

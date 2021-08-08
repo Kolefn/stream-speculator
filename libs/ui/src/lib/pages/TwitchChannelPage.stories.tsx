@@ -3,6 +3,7 @@ import { Meta } from '@storybook/react';
 import TwitchChannelPage from './TwitchChannelPage';
 import { ChannelStore, UserStore } from '@stream-speculator/state';
 import { StateProvider } from '../components';
+import { AugmentationType } from '@stream-speculator/common';
 
 export default {
   component: TwitchChannelPage,
@@ -19,7 +20,7 @@ export const PostLoad = () => {
   const userStore = new UserStore();
   const channelStore = new ChannelStore();
 
-  userStore.coins = 9841;
+  userStore.coins = 0;
   userStore.displayName = 'Bob Ross';
   userStore.isGuest = true;
   userStore.id = '12345';
@@ -41,12 +42,17 @@ export const PostLoad = () => {
 
   channelStore.predictions = [
     {
+      augmentation: {
+        type: AugmentationType.MoreLessEqual,
+        endsAt: Date.now() + 60 * 5000,
+      },
       id: '12345',
       channelId: '43212',
-      title: 'Viewer count in %',
+      title: 'Viewer count %',
       status: 'active',
-      startedAt: Date.now() - 60 * 1000,
-      locksAt: Date.now() + 60 * 4000,
+      startedAt: Date.now(),
+      locksAt: Date.now() + 30 * 1000,
+      winningOutcomeId: '0',
       outcomes: {
         '0': {
           id: '0',
@@ -56,6 +62,8 @@ export const PostLoad = () => {
           channelPoints: 1000,
           coinUsers: 1,
           coins: 500,
+          payoutPerCoin: 6,
+          personalBet: 500,
         },
         '1': {
           id: '1',
@@ -74,6 +82,41 @@ export const PostLoad = () => {
           channelPoints: 0,
           coinUsers: 0,
           coins: 0,
+        },
+      },
+    },
+    {
+      augmentation: {
+        type: AugmentationType.IncreaseTarget,
+        endsAt: Date.now() + 60 * 5000,
+      },
+      id: '231241',
+      channelId: '43212',
+      title: '1,800 or more viewers %',
+      status: 'resolved',
+      startedAt: Date.now(),
+      locksAt: Date.now() + 30 * 1000,
+      winningOutcomeId: '0',
+      outcomes: {
+        '0': {
+          id: '0',
+          title: 'Yes',
+          color: '#fff',
+          channelPointUsers: 1,
+          channelPoints: 1000,
+          coinUsers: 10,
+          coins: 50100,
+          payoutPerCoin: 6,
+          personalBet: 500,
+        },
+        '1': {
+          id: '1',
+          title: 'No',
+          color: '#fff',
+          channelPointUsers: 50,
+          channelPoints: 120000,
+          coinUsers: 13,
+          coins: 632000,
         },
       },
     },
