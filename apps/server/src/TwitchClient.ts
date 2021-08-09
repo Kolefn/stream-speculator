@@ -103,31 +103,32 @@ export default class TwitchClient {
   }
 
   async getStreamViewerCounts(channelIds: string[]): Promise<StreamMetricUpdateByChannel> {
-    await this.pubsub.connect();
-    await this.pubsub.listen(channelIds.map((id) => `video-playback-by-id.${id}`), this.auth);
     const output: StreamMetricUpdateByChannel = {};
     let outputSize = 0;
     await new Promise((resolve) => {
       const timeout = setTimeout(() => {
         resolve(output);
       }, TwitchClient.getSecondsBeforeNextViewerCountUpdate() * 1000 + 2000);
-
-      this.pubsub.onMessage((topic, anyData) => {
-        const data = anyData as any as PubSubViewerCountMessageData;
-        const channelId: string = topic.split('.')[1];
-        if (data.type === 'viewcount') {
-          output[channelId] = {
-            channelId,
-            type: StreamMetricType.ViewerCount,
-            value: data.viewers,
-            timestamp: data.server_time * 1000,
-          };
-          outputSize += 1;
-          if (outputSize === channelIds.length) {
-            clearTimeout(timeout);
-            resolve(output);
-          }
-        }
+      this.pubsub.connect().then(()=> {
+        this.pubsub.listen(channelIds.map((id) => `video-playback-by-id.${id}`), this.auth).then(()=> {
+          this.pubsub.onMessage((topic, anyData) => {
+            const data = anyData as any as PubSubViewerCountMessageData;
+            const channelId: string = topic.split('.')[1];
+            if (data.type === 'viewcount') {
+              output[channelId] = {
+                channelId,
+                type: StreamMetricType.ViewerCount,
+                value: data.viewers,
+                timestamp: data.server_time * 1000,
+              };
+              outputSize += 1;
+              if (outputSize === channelIds.length) {
+                clearTimeout(timeout);
+                resolve(output);
+              }
+            }
+          });
+        });
       });
     });
     await this.pubsub.disconnect();

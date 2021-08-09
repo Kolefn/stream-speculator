@@ -5,10 +5,11 @@ import {
   Bet,
   BetRequest,
   StreamMetricType,
-  channelPointsToCoins, isValidBetAmount, 
-  OUTCOME_COINS_MIN, WINS_PER_BONUS, WIN_BONUS_COINS,
+  isValidBetAmount, 
+  WINS_PER_BONUS, WIN_BONUS_COINS,
   FaunaDoc,
   DBClient as DB,
+  getPayoutPerCoin,
 } from '@stream-speculator/common';
 import { createPrediction, getWinningOutcomeId } from '../augmentation';
 import NotFoundError from '../errors/NotFoundError';
@@ -75,8 +76,8 @@ export const handleBet = async (
     bet: DB.ifNull(
       DB.useVar('existingBet'),
       DB.create(DB.bets, { 
-        ...request, userId: session.userId, channelId: DB.varSelect('fieldDoc', ['data', 'channelRef']) 
-      }, DB.fromNow(12, 'hours')),
+        ...request, userId: session.userId, _channelRef: DB.varSelect('fieldDoc', ['data', 'channelRef']) 
+      }, DB.fromNow(1, 'hours')),
       DB.addToDocFields(DB.varSelect('existingBet', ['ref']), { coins: request.coins }),
     ),
   }, DB.batch(
@@ -141,7 +142,7 @@ export const handleTaskPredictionEvent = async (
             },
           },
         ),
-        DB.create(DB.predictions, event.prediction, DB.fromNow(12, 'hours')),
+        DB.create(DB.predictions, event.prediction, DB.fromNow(1, 'hours')),
       ),
     );
 
@@ -205,8 +206,8 @@ export const handleTaskPredictionEvent = async (
 
     const predictionId = event.prediction.id;
     const { status, outcomes, winningOutcomeId } = await db.exec<Prediction>(
-      DB.ifEqual(
-        DB.getField(DB.predictions.doc(event.prediction.id), 'status'), 
+      DB.ifFieldEqual(DB.predictions.doc(event.prediction.id), 
+        'status', 
         'active',
         DB.defineVars({
           updatedPrediction: DB.update(DB.predictions.doc(event.prediction.id), update),
@@ -240,19 +241,11 @@ export const handleTaskPredictionEvent = async (
         throw new Error(`Winning outcome not found for: ${winningOutcomeId}`);
       }
 
-      const winningOutcome = outcomes[winningOutcomeId];
-      const winningOutcomePool = channelPointsToCoins(winningOutcome.channelPoints)
-      + winningOutcome.coins - OUTCOME_COINS_MIN;
-      const losingOutcomesPool = Object.values(outcomes)
-        .filter((item: PredictionOutcome) => item.id !== winningOutcomeId)
-        .map((item: PredictionOutcome) => channelPointsToCoins(item.channelPoints) + item.coins)
-        .reduce((sum: number, coins: number) => coins + sum, 0);
-
       Object.keys(outcomes).forEach((id) => {
         payoutRatios[id] = 0;
       });
 
-      payoutRatios[winningOutcomeId] = 1 + (losingOutcomesPool / winningOutcomePool);
+      payoutRatios[winningOutcomeId] = getPayoutPerCoin(winningOutcomeId, outcomes);
     } else {
       // refund
       Object.keys(outcomes).forEach((id) => {

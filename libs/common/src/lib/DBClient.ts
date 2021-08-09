@@ -396,6 +396,27 @@ export class DBClient {
     );
   }
 
+  static ifFieldEqual(
+    ref: faunadb.Expr,
+    field: string,
+    value: faunadb.ExprArg,
+    trueExpr: faunadb.Expr,
+    falseExpr: faunadb.Expr | null,
+  ) {
+    return q.If(
+      q.Exists(ref),
+      q.Let({
+        fieldDoc: q.Get(ref),
+      },
+      q.If(
+        q.Equals(q.Select(['data', field], q.Var('fieldDoc')), value),
+        trueExpr,
+        falseExpr,
+      )),
+      null,
+    );
+  }
+
   static ifEqual(a: faunadb.ExprArg, b: faunadb.ExprArg, trueExpr: faunadb.ExprArg | null,
     falseExpr: faunadb.ExprArg | null) : faunadb.Expr {
     return q.If(q.Equals(a, b), trueExpr, falseExpr);
@@ -408,6 +429,10 @@ export class DBClient {
 
   static firstPage(set: faunadb.Expr, size?: number) : faunadb.Expr {
     return q.Paginate(set, { size });
+  }
+
+  static getFirstPage(set: faunadb.Expr, size?: number) : faunadb.Expr {
+    return q.Map(q.Paginate(set, { size }), q.Lambda(['ref'], q.Get(q.Var('ref'))));
   }
 
   static getSortedResults(set: faunadb.Expr) : faunadb.Expr {

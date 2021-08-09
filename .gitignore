@@ -44,3 +44,4 @@ coverage
 .webpack
 .env.*
 .env
+apps/server/src/public

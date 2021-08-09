@@ -8,6 +8,8 @@ import {
 import { observer } from 'mobx-react-lite';
 import { useEffect } from 'react';
 import { BrowserRouter, Switch, Route } from 'react-router-dom';
+import usePagePathname from './usePagePathname';
+import usePageTitle from './usePageTitle';
 
 const OnAppLoad = observer(() => {
   const userStore = useUserStore();
@@ -25,11 +27,21 @@ const OnAppLoad = observer(() => {
   return null;
 });
 
-const TwitchChannelPageWithListeners = observer(() => {
+const TwitchChannelPageWithData = observer(() => {
   const userStore = useUserStore();
   const channelStore = useChannelStore();
+
+  const channelName = usePagePathname();
+  usePageTitle(`${channelName} - Twitch`);
+
   useEffect(() => {
-    if (userStore.dbClient) {
+    if (userStore.loggedIn && channelName) {
+      channelStore.load(channelName);
+    }
+  }, [userStore.loggedIn, channelName]);
+
+  useEffect(() => {
+    if (userStore.dbClient && channelStore.channel) {
       const subs = [
         channelStore.listenToMetrics(userStore.dbClient),
         channelStore.listenToPredictions(userStore.dbClient),
@@ -39,7 +51,7 @@ const TwitchChannelPageWithListeners = observer(() => {
       };
     }
     return;
-  }, [userStore.dbClient]);
+  }, [userStore.dbClient, channelStore.channel]);
   return <TwitchChannelPage />;
 });
 
@@ -51,7 +63,7 @@ export function App() {
         <BrowserRouter>
           <Switch>
             <Route path="/twitch/:channelName">
-              <TwitchChannelPageWithListeners />
+              <TwitchChannelPageWithData />
             </Route>
             <Route path="/">
               <Homepage />

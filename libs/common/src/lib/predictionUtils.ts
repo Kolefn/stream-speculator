@@ -35,9 +35,9 @@ export const fillPointGaps = (points: Points)
 
 export const getPayoutPerCoin = (outcomeId: string, outcomes: { [key: string]: PredictionOutcome }) : number => {
   const selected = outcomes[outcomeId];
-  const sTotal = channelPointsToCoins(selected.channelPoints) + selected.coins;
+  const sTotal = channelPointsToCoins(selected.channelPoints) + selected.coins - OUTCOME_COINS_MIN;
   const otherTotal = Object.values(outcomes).filter((o)=> o.id !== outcomeId).reduce((n, o)=> channelPointsToCoins(o.channelPoints) + o.coins + n, 0);
-  return otherTotal / sTotal;
+  return 1 + (otherTotal / sTotal);
 };
 
 export const getPersonalNet = (p: Prediction, bets: Bet[]) : number => {
@@ -47,27 +47,9 @@ export const getPersonalNet = (p: Prediction, bets: Bet[]) : number => {
   return bets.filter((b)=> b.predictionId === p.id)
             .reduce((net, b)=> {
               if(b.outcomeId === p.winningOutcomeId){
-                return net + (getPayoutPerCoin(b.outcomeId, p.outcomes) * b.coins)
+                return net + (getPayoutPerCoin(b.outcomeId, p.outcomes) * b.coins) - b.coins;
               }else{
                 return net - b.coins;
               }
             }, 0);
 };
-
-
-// export const getProjectedDelta = (points: Points, window: PredictionWindow)
-// : PointsDelta => {
-//   if (points.length <= 1) {
-//     return { value: 0, fraction: 1, positive: true };
-//   }
-//   const left = points[0];
-//   const right = points[points.length - 1];
-//   const lv = left.value;
-//   const rv = right.value;
-//   const scale = window / (right.timestamp - left.timestamp);
-//   return {
-//     value: (rv - lv) * scale,
-//     fraction: ((rv / lv) - 1) * scale,
-//     positive: rv >= lv,
-//   };
-// };

@@ -65,6 +65,7 @@ export type StreamMetricPoint = {
 export type User = {
   id: string;
   coins: number;
+  wins?: number;
 };
 
 export type PredictionOutcome = {

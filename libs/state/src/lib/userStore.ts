@@ -5,6 +5,7 @@ import { DBToken, User, DBClient } from '@stream-speculator/common';
 
 export class UserStore {
   coins = 0;
+  wins = 0;
 
   id: string | null = null;
 
@@ -30,7 +31,7 @@ export class UserStore {
     makeAutoObservable(this);
   }
 
-  async loginAsGuest() {
+  loginAsGuest() {
     loginAsGuest().then((resp) => {
       runInAction(() => {
         this.id = resp.userId;
@@ -47,7 +48,7 @@ export class UserStore {
     });
   }
 
-  async autoLogin() {
+  autoLogin() {
     login().then((resp) => {
       runInAction(() => {
         this.id = resp.userId;
@@ -58,6 +59,7 @@ export class UserStore {
         this.loginError = null;
       });
     }).catch((e) => {
+      this.loginAsGuest();
       runInAction(() => {
         this.loginError = e;
       });
@@ -73,6 +75,7 @@ export class UserStore {
       const user = data.document.data as User;
       runInAction(() => {
         this.coins = user.coins;
+        this.wins = user.wins ?? this.wins;
       });
     }, { includeSnapshot: true });
   }

@@ -114,6 +114,13 @@ export class ChannelStore {
       });
     });
   }
+
+  lockPrediction(id: string) {
+    const index = this.predictions.findIndex((p)=> p.id === id);
+    if(index > -1){
+      this.predictions[index].status = 'locked';
+    }
+  }
 }
 
 export const ChannelStoreContext = createContext<ChannelStore>({} as ChannelStore);

@@ -21,11 +21,11 @@ custom:
     linting: false
     tsConfig: 'tsconfig.app.json'
   serverless-offline:
-    httpPort: 3333
+    httpPort: 8080
     noPrependStageInUrl: true
 
 provider:
-  name: aws 
+  name: aws
   runtime: nodejs14.x
   memorySize: 128
   lambdaHashingVersion: 20201221
@@ -49,23 +49,24 @@ provider:
         - sqs:SendMessageBatch
       Resource:
         - !GetAtt TaskQueue.Arn
-  
 functions:
   default:
-    handler: src/ServerlessExpressApp.default
+    handler: src/ServerlessExpressApp.handler
     events:
       - httpApi: '*'
+    package:
+      patterns:
+        - src/public/**
   taskHandler:
     handler: src/handlers/taskRouter.default
     timeout: 15
     events:
       - sqs:
           arn: !GetAtt TaskQueue.Arn
-          
+
 resources:
   Resources:
     TaskQueue:
       Type: AWS::SQS::Queue
       Properties:
         QueueName: ${self:service}-task-queue
-  

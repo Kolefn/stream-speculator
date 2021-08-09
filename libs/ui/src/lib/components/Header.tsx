@@ -15,7 +15,15 @@ const AuthSection = observer(() => {
 
 const Header = observer(() => {
   return (
-    <Flex bg="gray.700" direction="row" w="100%" p="8px" pl="20px" pr="20px">
+    <Flex
+      bg="gray.700"
+      direction="row"
+      w="100%"
+      p="8px"
+      pl="20px"
+      pr="20px"
+      justify="space-between"
+    >
       <CoinBalance />
       <AuthSection />
     </Flex>

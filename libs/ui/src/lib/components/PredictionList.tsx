@@ -15,7 +15,7 @@ const PredictionList = observer(() => {
       {store.predictions.map((p) => (
         <WrapItem key={p.id}>
           <PredictionCard
-            data={p}
+            id={p.id}
             onBet={(pid, oid, coins) => store.bet(pid, oid, coins)}
           />
         </WrapItem>

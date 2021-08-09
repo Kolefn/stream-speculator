@@ -1,4 +1,4 @@
 import serverless from 'serverless-http';
 import ExpressApp from './ExpressApp';
 
-export default serverless(ExpressApp);
+export const handler = serverless(ExpressApp);

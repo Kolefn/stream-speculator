@@ -20,7 +20,8 @@ export const PostLoad = () => {
   const userStore = new UserStore();
   const channelStore = new ChannelStore();
 
-  userStore.coins = 0;
+  userStore.coins = 10000;
+  userStore.wins = 3;
   userStore.displayName = 'Bob Ross';
   userStore.isGuest = true;
   userStore.id = '12345';
@@ -62,7 +63,6 @@ export const PostLoad = () => {
           channelPoints: 1000,
           coinUsers: 1,
           coins: 500,
-          payoutPerCoin: 6,
           personalBet: 500,
         },
         '1': {
@@ -106,7 +106,6 @@ export const PostLoad = () => {
           channelPoints: 1000,
           coinUsers: 10,
           coins: 50100,
-          payoutPerCoin: 6,
           personalBet: 500,
         },
         '1': {

@@ -44,7 +44,7 @@ const moreLessEqualViewerCount = (
     id: createPredictionId(),
     channelId,
     status: 'active',
-    title: `Viewer count in ${duration.label}.`,
+    title: `Viewer count %`,
     startedAt,
     locksAt: startedAt + (duration.ms / 5),
     outcomes: {
@@ -97,7 +97,7 @@ const increaseTargetViewerCount = (
     id: createPredictionId(),
     channelId,
     status: 'active',
-    title: `Reach ${target} or more viewers in ${duration.label}.`,
+    title: `Reach ${target} or more viewers %`,
     startedAt,
     locksAt: startedAt + (duration.ms / 5),
     outcomes: {
