@@ -62,7 +62,7 @@ const PredictionCardTitle = observer(({ data }: { data: Prediction }) => {
         {store.selectedOutcomeId ? 'Your Prediction' : 'Predict'}
       </Heading>
       <Heading size="md" color="whiteAlpha.900">
-        {store.selectedOutcomeId ? (
+        {data.status !== 'locked' && store.selectedOutcomeId ? (
           data.outcomes[store.selectedOutcomeId].title
         ) : (
           <TitleAtTime
