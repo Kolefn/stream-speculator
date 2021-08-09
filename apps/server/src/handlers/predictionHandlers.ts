@@ -77,7 +77,7 @@ export const handleBet = async (
       DB.useVar('existingBet'),
       DB.create(DB.bets, { 
         ...request, userId: session.userId, _channelRef: DB.varSelect('fieldDoc', ['data', 'channelRef']) 
-      }, DB.fromNow(1, 'hours')),
+      }, DB.fromNow(1800, 'seconds')),
       DB.addToDocFields(DB.varSelect('existingBet', ['ref']), { coins: request.coins }),
     ),
   }, DB.batch(
@@ -142,7 +142,7 @@ export const handleTaskPredictionEvent = async (
             },
           },
         ),
-        DB.create(DB.predictions, event.prediction, DB.fromNow(1, 'hours')),
+        DB.create(DB.predictions, event.prediction, DB.fromNow(1800, 'seconds')),
       ),
     );
 

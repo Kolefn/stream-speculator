@@ -69,10 +69,11 @@ export const getTwitchChannelPageData = async (params:
     const response: TwitchChannelPageData = { channel };
     if (channel.isLive) {
       response.metrics = {
-        viewerCount: await params.db.history<StreamMetricPoint>(
-          DB.streamMetric(channel.id, StreamMetricType.ViewerCount),
-          1000 * 60 * 60,
-        ),
+        viewerCount: [
+          await params.db.exec<StreamMetric>(
+            DB.streamMetric(channel.id, StreamMetricType.ViewerCount),
+          ),
+        ]
       };
     }
 
