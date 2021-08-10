@@ -78,6 +78,9 @@ export class ChannelStore {
     return dbClient?.onChange(
       DBClient.channels.doc(this.channel?.id ?? ''),
       (data) => {
+        if(data.action && data.action !== 'update'){
+          return;
+        }
         let update = (data.document.data as TwitchChannel).predictionUpdate as Prediction;
         if (!update) {
           return;
