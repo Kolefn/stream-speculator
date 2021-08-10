@@ -20,6 +20,9 @@ custom:
   bundle:
     linting: false
     tsConfig: 'tsconfig.app.json'
+    copyFiles:
+      - from: 'src/public/**'
+        to: './'
   serverless-offline:
     httpPort: 8080
     noPrependStageInUrl: true
@@ -36,10 +39,14 @@ provider:
     PUBLIC_FOLDER_PATH: src/public
     REGION: ${self:provider.region}
     SQS_QUEUE_URL: !Ref TaskQueue
+    HOME_PAGE_URL: ${env:HOME_PAGE_URL}
+    DOMAIN_NAME: ${env:DOMAIN_NAME}
     TWITCH_CLIENT_ID: ${env:TWITCH_CLIENT_ID}
     TWITCH_CLIENT_SECRET: ${env:TWITCH_CLIENT_SECRET}
     TWITCH_WEBHOOK_SECRET: ${env:TWITCH_WEBHOOK_SECRET}
     TWITCH_WEBHOOK_CALLBACK: ${env:TWITCH_WEBHOOK_CALLBACK}
+    TWITCH_REDIRECT_URI: ${env:TWITCH_REDIRECT_URI}
+    TWITCH_TOKEN_ENCRYPTION_KEY: ${env:TWITCH_TOKEN_ENCRYPTION_KEY}
     FAUNADB_SECRET: ${env:FAUNADB_SECRET}
     COOKIE_SIGNING_KEY: ${env:COOKIE_SIGNING_KEY}
   iamRoleStatements:
@@ -54,9 +61,6 @@ functions:
     handler: src/ServerlessExpressApp.handler
     events:
       - httpApi: '*'
-    package:
-      patterns:
-        - src/public/**
   taskHandler:
     handler: src/handlers/taskRouter.default
     timeout: 15
