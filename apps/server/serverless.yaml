@@ -61,6 +61,7 @@ functions:
     handler: src/ServerlessExpressApp.handler
     events:
       - httpApi: '*'
+    timeout: 10
   taskHandler:
     handler: src/handlers/taskRouter.default
     timeout: 15

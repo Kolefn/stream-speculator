@@ -4,7 +4,7 @@ import { HelixEventSubSubscriptionStatus, HelixEventSubTransportData } from 'twi
 import {
   TwitchChannelPageData,
   TwitchChannel, StreamMetricType,
-  StreamMetricPoint, StreamMetric, Prediction, PredictionOutcome,
+  StreamMetric, Prediction, PredictionOutcome,
   FaunaDoc, FaunaDocCreate, FaunaPage, FaunaRef,
   DBClient as DB,
   Bet,
@@ -114,11 +114,25 @@ export const getTwitchChannelPageData = async (params:
     }
     return new APIResponse({ status: 200, data: response });
   } catch {
-    const stream = await params.twitch.api.helix.streams.getStreamByUserName(userName);
-    if (!stream) {
-      throw new NotFoundError(`${userName} TwitchStream`);
+    const channelUser = await params.twitch.api.helix.users.getUserByName(userName);
+    if (!channelUser) {
+      throw new NotFoundError(`${userName} Twitch User`);
     }
 
+    const stream = await channelUser.getStream();
+    if(!stream){
+      return new APIResponse({
+        status: 200,
+        data: { channel: {
+          id: channelUser.id,
+          displayName: channelUser.displayName,
+          userName: channelUser.name,
+          isLive: false,
+          profileImageUrl: channelUser.profilePictureUrl,
+        },
+      }});
+    }
+    
     const result = await params.db.exec<FaunaDocCreate>(
       DB.batch(
         DB.create<StreamMetric & { id: string }>(DB.streamMetrics, {
@@ -133,7 +147,7 @@ export const getTwitchChannelPageData = async (params:
           displayName: stream.userDisplayName,
           userName: stream.userName,
           isLive: true,
-          profileImageUrl: (await stream.getUser()).profilePictureUrl,
+          profileImageUrl: channelUser.profilePictureUrl,
           stream: {
             id: stream.id,
             startedAt: stream.startDate.getTime(),

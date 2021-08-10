@@ -13,6 +13,7 @@ import { getTwitchChannelPageData, handleTwitchWebhook } from './handlers/twitch
 import { handleBet, betRequestValidator } from './handlers/predictionHandlers';
 import taskRouter from './handlers/taskRouter';
 import { COOKIE_SIGNING_KEY, FAUNADB_SECRET, IS_OFFLINE, PUBLIC_FOLDER_PATH } from './environment';
+import NotFoundError from './errors/NotFoundError';
 
 declare global {
   namespace Express {
@@ -50,7 +51,7 @@ const buildHandler = <T>(responder: (req:Request, res:Response) => Promise<Recor
         }
       } catch (e) {
         console.error(e);
-        APIResponse.send({ status: APIResponseStatus.ServerError }, res);
+        APIResponse.send({ status: e instanceof NotFoundError ? APIResponseStatus.NotFound : APIResponseStatus.ServerError }, res);
       }
     },
   ];

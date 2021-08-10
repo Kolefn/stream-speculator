@@ -1,6 +1,6 @@
 import { Button, Heading, HStack, Stack, Text } from '@chakra-ui/react';
 import { PredictionOutcome } from '@stream-speculator/common';
-import { useChannelStore } from '@stream-speculator/state';
+import { TwitchPurpleLight } from '../colors';
 import CoinIcon from '../icons/CoinIcon';
 import UserIcon from '../icons/UserIcon';
 
@@ -13,12 +13,12 @@ const OutcomeButton = ({
   onSelect: (id: string) => void;
   disabled: boolean;
 }) => {
-  const store = useChannelStore();
+  const didBetOn = data.personalBet && data.personalBet > 0;
   return (
     <Button
       size="auto"
       variant="outline"
-      borderColor="whiteAlpha.400"
+      borderColor={didBetOn ? TwitchPurpleLight : 'whiteAlpha.400'}
       p="6px"
       onClick={() => onSelect(data.id)}
       disabled={disabled}
@@ -50,9 +50,7 @@ const OutcomeButton = ({
             />
             <Text fontSize="s" fontWeight="light" color="whiteAlpha.800">
               {data.coins + data.channelPoints}
-              {data.personalBet && data.personalBet > 0
-                ? ` (${data.personalBet})`
-                : ''}
+              {didBetOn ? ` (${data.personalBet})` : ''}
             </Text>
           </HStack>
         </HStack>

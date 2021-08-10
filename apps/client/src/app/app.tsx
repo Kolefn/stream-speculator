@@ -27,7 +27,7 @@ const OnAppLoad = observer(() => {
   return null;
 });
 
-const TwitchChannelPageWithData = observer(() => {
+const OnChannelPageLoad = observer(() => {
   const userStore = useUserStore();
   const channelStore = useChannelStore();
 
@@ -52,8 +52,18 @@ const TwitchChannelPageWithData = observer(() => {
     }
     return;
   }, [userStore.dbClient, channelStore.channel]);
-  return <TwitchChannelPage />;
+
+  return null;
 });
+
+const TwitchChannelPageWithData = () => {
+  return (
+    <>
+      <OnChannelPageLoad />
+      <TwitchChannelPage />
+    </>
+  );
+};
 
 export function App() {
   return (

@@ -47,6 +47,9 @@ export class ChannelStore {
 
   async load(channelName: string) {
     try {
+      runInAction(()=> {
+        this.loadError = null;
+      });
       const result = await getTwitchChannelPageData(channelName);
       runInAction(() => {
         this.channel = result.channel;

@@ -1,3 +1,5 @@
+import RequestError from "./RequestError";
+
 export default async <T>(method: string, path: string, body?: any) : Promise<T> => {
   const res = await fetch(path, {
     method,
@@ -7,5 +9,5 @@ export default async <T>(method: string, path: string, body?: any) : Promise<T> 
   if (res.status === 200) {
     return (await res.json()) as T;
   }
-  throw new Error(`${method} ${path} ${res.status} ${res.statusText}`);
+  throw new RequestError(method, path, res.status, res.statusText);
 };

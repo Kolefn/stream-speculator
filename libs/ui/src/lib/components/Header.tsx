@@ -1,6 +1,7 @@
-import { Avatar, Flex } from '@chakra-ui/react';
+import { Avatar, Flex, Heading, HStack } from '@chakra-ui/react';
 import { useUserStore } from '@stream-speculator/state';
 import { observer } from 'mobx-react-lite';
+import { TwitchPurpleLight } from '../colors';
 import CoinBalance from './CoinBalance';
 import LoginButton from './LoginButton';
 
@@ -9,7 +10,17 @@ const AuthSection = observer(() => {
   return store.isGuest ? (
     <LoginButton />
   ) : (
-    <Avatar src={store.profileImageUrl} name={store.displayName} size="sm" />
+    <HStack spacing="8px">
+      <Heading size="xs" fontWeight="normal">
+        {store.displayName}
+      </Heading>
+      <Avatar
+        src={store.profileImageUrl}
+        size="sm"
+        borderColor={TwitchPurpleLight}
+        borderWidth="1px"
+      />
+    </HStack>
   );
 });
 

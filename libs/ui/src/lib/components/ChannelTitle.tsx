@@ -12,9 +12,18 @@ const ChannelTitle = observer(() => {
         <Skeleton h="20px" w="80px" />
       )}
       {store.channel ? (
-        store.channel?.stream && (
+        store.channel?.stream ? (
           <Heading size="xs" color="whiteAlpha.900" fontWeight="normal">
             {store.channel?.stream?.title}
+          </Heading>
+        ) : (
+          <Heading
+            size="xs"
+            color="whiteAlpha.700"
+            fontWeight="normal"
+            textTransform="uppercase"
+          >
+            currently offline
           </Heading>
         )
       ) : (
