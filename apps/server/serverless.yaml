@@ -35,6 +35,9 @@ provider:
   stage: ${opt:stage, 'dev'}
   region: ${opt:region, 'us-east-1'}
   stackName: ${self:service}-${self:provider.stage}
+  apiGateway:
+    binaryMediaTypes:
+      - '*/*'
   environment:
     PUBLIC_FOLDER_PATH: src/public
     REGION: ${self:provider.region}

@@ -1,4 +1,4 @@
-import { Stat, StatGroup, StatLabel, StatNumber } from '@chakra-ui/react';
+import { HStack, Stat, StatLabel, StatNumber } from '@chakra-ui/react';
 import { useChannelStore } from '@stream-speculator/state';
 import { observer } from 'mobx-react-lite';
 import Uptime from './Uptime';
@@ -7,7 +7,7 @@ const ChannelMetaBar = observer(() => {
   const store = useChannelStore();
 
   return (
-    <StatGroup>
+    <HStack spacing="25px">
       <Stat>
         <StatLabel fontSize="xs" color="whiteAlpha.500">
           Uptime
@@ -21,7 +21,7 @@ const ChannelMetaBar = observer(() => {
         </StatLabel>
         <StatNumber fontSize="s">{store.currentViewerCount}</StatNumber>
       </Stat>
-    </StatGroup>
+    </HStack>
   );
 });
 

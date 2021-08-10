@@ -9,7 +9,7 @@ const ChannelTitle = observer(() => {
       {store.channel ? (
         <Heading size="md">{store.channel?.displayName}</Heading>
       ) : (
-        <Skeleton h="20px" w="80px" />
+        <Skeleton h="20px" w="100px" />
       )}
       {store.channel ? (
         store.channel?.stream ? (
@@ -27,7 +27,7 @@ const ChannelTitle = observer(() => {
           </Heading>
         )
       ) : (
-        <Skeleton h="20px" w="200px" />
+        <Skeleton h="20px" w="250px" />
       )}
     </Stack>
   );
