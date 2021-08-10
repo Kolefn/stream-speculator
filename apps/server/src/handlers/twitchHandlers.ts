@@ -91,7 +91,12 @@ export const getTwitchChannelPageData = async (params:
               10,
             ),
           ),
-          bets: DB.getFirstPage(DB.bets.withRefsTo([{ collection: DB.channels, id: channel.id }]), 30),
+          bets: DB.getFirstPage(
+            DB.bets.withRefsTo([
+              { collection: DB.channels, id: channel.id }, 
+              { collection: DB.users, id: params.session.userId }
+            ]),
+          ),
         })
       );
       response.predictions = DB.deRefPage<Prediction>(pages.predictions);
