@@ -228,12 +228,12 @@ export const handleTaskPredictionEvent = async (
       return;
     }
 
-    scheduler.schedule({
-        type: TaskType.CreatePrediction,
-        data: {
-          channelId: event.prediction.channelId,
-        },
-      });
+    const nextPredictionScheduling = scheduler.schedule({
+      type: TaskType.CreatePrediction,
+      data: {
+        channelId: event.prediction.channelId,
+      },
+    });
 
     const payoutRatios: { [key:string]: number } = {};
     if (status === 'resolved') {
@@ -287,6 +287,8 @@ export const handleTaskPredictionEvent = async (
       },
       { size: 250, getDocs: true },
     );
+
+    await nextPredictionScheduling;
   }
 };
 
