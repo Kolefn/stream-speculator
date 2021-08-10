@@ -71,10 +71,11 @@ CreateIndex({
 })
 
 CreateIndex({
-  name: "Bets_by_channelRef",
+  name: "Bets_by_channelRef_userRef",
   source: Collection("Bets"),
   terms: [
     { field: ["data", "channelRef"] },
+    { field: ["data", "userRef"] },
   ]
 })
 
