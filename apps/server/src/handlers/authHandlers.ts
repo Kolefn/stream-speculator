@@ -147,12 +147,10 @@ export const redirectFromTwitchLogin = async (
       ),
       user: DB.ifNull(
         DB.useVar('existingUser'),
-        DB.create(
-          DB.users,
+        DB.update(
+          DB.users.doc(session.userId),
           {
-            id: session.userId,
             isGuest: false,
-            coins: USER_INITIAL_COINS,
             _twitchId: tokenInfo.userId,
           },
         ),
