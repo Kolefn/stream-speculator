@@ -4,6 +4,7 @@ import TwitchChannelPage from './TwitchChannelPage';
 import { ChannelStore, UserStore } from '@stream-speculator/state';
 import { StateProvider } from '../components';
 import Homepage from './Homepage';
+import { BrowserRouter } from 'react-router-dom';
 
 export default {
   component: Homepage,
@@ -21,8 +22,10 @@ export const Base = () => {
   userStore.id = '12345';
 
   return (
-    <StateProvider userStore={userStore} channelStore={channelStore}>
-      <Homepage />
-    </StateProvider>
+    <BrowserRouter>
+      <StateProvider userStore={userStore} channelStore={channelStore}>
+        <Homepage />
+      </StateProvider>
+    </BrowserRouter>
   );
 };

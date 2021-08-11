@@ -65,6 +65,16 @@ const TwitchChannelPageWithData = () => {
   );
 };
 
+const OnHomepageLoad = observer(() => {
+  const userStore = useUserStore();
+  useEffect(() => {
+    if (userStore.loggedIn && !userStore.isGuest) {
+      userStore.loadFollowedStreams();
+    }
+  }, [userStore.loggedIn, userStore.isGuest]);
+  return null;
+});
+
 export function App() {
   return (
     <StateProvider>
@@ -76,6 +86,7 @@ export function App() {
               <TwitchChannelPageWithData />
             </Route>
             <Route path="/">
+              <OnHomepageLoad />
               <Homepage />
             </Route>
           </Switch>

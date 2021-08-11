@@ -49,6 +49,8 @@ const updatePrediction = (
   }, {}) : prediction.outcomes,
 });
 
+const searchResultCache: { [key: string]: SearchResult[] } = {};
+
 export class ChannelStore {
   loadError: Error | null = null;
 
@@ -65,6 +67,8 @@ export class ChannelStore {
   searchResults: SearchResult[] = [];
 
   searchSelectIndex = 0;
+
+  searchLoading = false;
 
   constructor() {
     makeAutoObservable(this);
@@ -162,9 +166,24 @@ export class ChannelStore {
     if(!text || text.trim() === ''){
       return;
     }
+
+    if(searchResultCache[text]){
+      this.searchResults = searchResultCache[text];
+      this.searchLoading = false;
+      return;
+    }
+    runInAction(()=> {
+      this.searchLoading = true;
+    });
     throttledSearchChannels(text)?.then((results: SearchResult[])=> {
+      searchResultCache[text] = results;
       runInAction(()=> {
         this.searchResults = results;
+        this.searchLoading = false;
+      });
+    }).catch(()=> {
+      runInAction(()=> {
+        this.searchLoading = false;
       });
     });
   }

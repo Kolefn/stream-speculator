@@ -12,6 +12,7 @@ const LoginButton = () => {
       variant="outline"
       aria-label="Login with Twitch"
       href={'/api/twitch/redirectTo'}
+      minW="80px"
     >
       Login
     </Button>

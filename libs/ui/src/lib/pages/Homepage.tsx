@@ -1,9 +1,5 @@
-import {
-  Container,
-  Heading,
-  Stack,
-  useBreakpointValue,
-} from '@chakra-ui/react';
+import { Container, Heading, Stack } from '@chakra-ui/react';
+import FollowedStreams from '../components/FollowedStreams';
 import Header from '../components/Header';
 import Search from '../components/Search';
 const Homepage = () => {
@@ -21,6 +17,7 @@ const Homepage = () => {
           <Search />
         </Container>
       </Stack>
+      <FollowedStreams />
     </Stack>
   );
 };

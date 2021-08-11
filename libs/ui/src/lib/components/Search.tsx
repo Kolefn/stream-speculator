@@ -16,6 +16,7 @@ import {
   Avatar,
   HStack,
   Heading,
+  CircularProgress,
 } from '@chakra-ui/react';
 import { SearchResult } from '@stream-speculator/common';
 import { useChannelStore, useUserStore } from '@stream-speculator/state';
@@ -65,14 +66,18 @@ const SearchResults = observer(() => {
   useEffect(() => {
     store.searchSelect(0);
   }, []);
-  return store.searchResults.length > 0 ? (
-    <Stack spacing="10px">
+  return store.searchLoading || store.searchResults.length > 0 ? (
+    <Stack spacing="10px" align="center">
       <Divider />
-      <List spacing="5px">
-        {store.searchResults.map((r, i) => (
-          <SearchResultItem key={r.displayName} data={r} index={i} />
-        ))}
-      </List>
+      {store.searchLoading ? (
+        <CircularProgress size="20px" color="whiteAlpha.800" isIndeterminate />
+      ) : (
+        <List spacing="5px" w="100%">
+          {store.searchResults.map((r, i) => (
+            <SearchResultItem key={r.displayName} data={r} index={i} />
+          ))}
+        </List>
+      )}
     </Stack>
   ) : null;
 });
@@ -94,11 +99,12 @@ const SearchBody = () => {
     [userStore.isGuest]
   );
   const onKeyDown = useCallback((e) => {
-    console.log(e);
     if (e.keyCode === 38) {
       store.searchSelect(store.searchSelectIndex - 1);
+      e.preventDefault();
     } else if (e.keyCode === 40) {
       store.searchSelect(store.searchSelectIndex + 1);
+      e.preventDefault();
     }
   }, []);
   return (
@@ -120,19 +126,19 @@ const SearchBody = () => {
   );
 };
 
-const Search = () => {
+const Search = ({ collapsed }: { collapsed?: boolean }) => {
   const { isOpen, onOpen, onClose } = useDisclosure();
   return (
     <>
       <Button
         onClick={onOpen}
-        leftIcon={<SearchIcon color="whiteAlpha.700" />}
+        leftIcon={collapsed ? undefined : <SearchIcon color="whiteAlpha.700" />}
         variant="solid"
         color="whiteAlpha.700"
-        w="100%"
+        w={collapsed ? undefined : '100%'}
         justifyContent="flex-start"
       >
-        Search Channels
+        {collapsed ? <SearchIcon color="whiteAlpha.700" /> : 'Search Channels'}
       </Button>
       <Modal isOpen={isOpen} onClose={onClose}>
         <ModalOverlay />

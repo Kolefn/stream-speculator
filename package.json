@@ -4,26 +4,9 @@
   "license": "MIT",
   "scripts": {
     "nx": "nx",
-    "start": "nx serve",
-    "build": "nx build",
-    "test": "nx test",
-    "lint": "nx workspace-lint && nx lint",
-    "e2e": "nx e2e",
-    "affected:apps": "nx affected:apps",
-    "affected:libs": "nx affected:libs",
-    "affected:build": "nx affected:build",
-    "affected:e2e": "nx affected:e2e",
-    "affected:test": "nx affected:test",
-    "affected:lint": "nx affected:lint",
-    "affected:dep-graph": "nx affected:dep-graph",
-    "affected": "nx affected",
-    "format": "nx format:write",
-    "format:write": "nx format:write",
-    "format:check": "nx format:check",
-    "update": "nx migrate latest",
-    "workspace-generator": "nx workspace-generator",
-    "dep-graph": "nx dep-graph",
-    "help": "nx help"
+    "build:client:prod": "nx run client:build --prod",
+    "analyze:client": "webpack-bundle-analyzer apps/server/src/public/stats.json",
+    "deploy:server": "nx deploy server"
   },
   "private": true,
   "dependencies": {
@@ -100,6 +83,7 @@
     "ts-jest": "27.0.3",
     "ts-node": "~9.1.1",
     "typescript": "~4.3.5",
-    "url-loader": "^3.0.0"
+    "url-loader": "^3.0.0",
+    "webpack-bundle-analyzer": "^4.4.2"
   }
 }

@@ -121,3 +121,10 @@ export type SearchResult = {
   profileImageUrl: string;
   isLive: boolean;
 };
+
+export type FollowedStream = {
+  displayName: string;
+  profileImageUrl: string;
+  title: string;
+  thumbnailUrl: string;
+};

@@ -11,7 +11,7 @@ const TwitchChannelPage = observer(() => {
     store.loadError instanceof RequestError && store.loadError.status === 404;
   return (
     <Stack>
-      <Header />
+      <Header showSearch />
       {notFound ? (
         <Flex justify="center" w="100%" p="30px">
           <Heading size="md">Channel Not Found</Heading>

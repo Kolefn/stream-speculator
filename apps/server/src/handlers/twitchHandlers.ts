@@ -10,6 +10,7 @@ import {
   Bet,
   getPersonalNet,
   SearchResult,
+  FollowedStream,
 } from '@stream-speculator/common';
 import { AuthSession, USER_COOKIE_TTL_MS } from './authHandlers';
 import NotFoundError from '../errors/NotFoundError';
@@ -389,7 +390,7 @@ export const handleTaskStreamEvent = async (
 };
 
 
-export const searchChannels = async (session: AuthSession | null, term: string, twitch: TwitchClient) : Promise<APIResponse<SearchResult[]>> => {
+export const searchChannels = async (session: AuthSession | null, term: string) : Promise<APIResponse<SearchResult[]>> => {
   if(!session || !session.twitchToken){
     throw new UnAuthorizedError('search channels');
   }
@@ -399,10 +400,10 @@ export const searchChannels = async (session: AuthSession | null, term: string, 
   }
   
   let newToken: AccessToken | undefined; 
-  const api = twitch.getApiForUser(TwitchClient.decryptToken(session.twitchToken), (t)=> {
+  const api = TwitchClient.getApiForUser(TwitchClient.decryptToken(session.twitchToken), (t)=> {
     newToken = t;
   });
-  const channels = await api.helix.search.searchChannels(term, { limit: '5' });
+  const channels = await api.helix.search.searchChannels(term, { limit: '3' });
 
   const users = await api.helix.users.getUsersByIds(channels.data.map((r)=> r.id));
 
@@ -425,4 +426,39 @@ export const searchChannels = async (session: AuthSession | null, term: string, 
       ),
     ] : [],
   });
+};
+
+export const getFollowedStreams = async (session: AuthSession | null) : Promise<APIResponse<FollowedStream[]>> => {
+
+  if(!session || !session.twitchId){
+    throw new UnAuthorizedError('followed streams');
+  }
+
+  let newToken: AccessToken | undefined; 
+  const api = TwitchClient.getApiForUser(TwitchClient.decryptToken(session.twitchToken), (t)=> {
+    newToken = t;
+  });
+
+  const paginator = api.helix.streams.getFollowedStreamsPaginated(session.twitchId);
+  const streams = await paginator.getAll();
+  const users = await api.helix.users.getUsersByIds(streams.map((s)=> s.userId));
+  return new APIResponse<FollowedStream[]>({
+    data: streams.map((s)=> ({
+      displayName: s.userDisplayName,
+      title: s.title,
+      profileImageUrl: users.find((u)=> u.id === s.userId)?.profilePictureUrl,
+      thumbnailUrl: s.thumbnailUrl,
+    })),
+    cookies: newToken ? [
+      new Cookie(
+        'session',
+        {
+          ...session,
+          twitchToken: TwitchClient.encryptToken(newToken),
+        },
+        USER_COOKIE_TTL_MS,
+      ),
+    ] : [],
+  });
+
 };

@@ -5,6 +5,7 @@ import {
   StatHelpText,
   StatLabel,
   StatNumber,
+  useBreakpointValue,
 } from '@chakra-ui/react';
 import { WINS_PER_BONUS } from '@stream-speculator/common';
 import { useUserStore } from '@stream-speculator/state';
@@ -13,8 +14,9 @@ import { observer } from 'mobx-react-lite';
 const CoinBalance = observer(() => {
   const store = useUserStore();
   const percToBonus = (((store.wins % WINS_PER_BONUS) / 50) * 100).toFixed(0);
+  const spacing = useBreakpointValue({ base: '10px', md: '20px' });
   return (
-    <HStack spacing="20px" align="flex-start">
+    <HStack spacing={spacing} align="flex-start">
       <Stat>
         <StatLabel color="whiteAlpha.700" fontSize="xs">
           Coins

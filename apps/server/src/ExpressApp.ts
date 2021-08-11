@@ -9,7 +9,7 @@ import Scheduler from './Scheduler';
 import {
   AuthSession, getDBToken, login, loginAsGuest, redirectFromTwitchLogin, redirectToTwitchLogin,
 } from './handlers/authHandlers';
-import { getTwitchChannelPageData, handleTwitchWebhook, searchChannels } from './handlers/twitchHandlers';
+import { getFollowedStreams, getTwitchChannelPageData, handleTwitchWebhook, searchChannels } from './handlers/twitchHandlers';
 import { handleBet, betRequestValidator } from './handlers/predictionHandlers';
 import taskRouter from './handlers/taskRouter';
 import { COOKIE_SIGNING_KEY, FAUNADB_SECRET, IS_OFFLINE, PUBLIC_FOLDER_PATH } from './environment';
@@ -91,7 +91,8 @@ ExpressApp.get('/api/twitch/channel', buildHandler((req) => getTwitchChannelPage
   session: req.session,
 })));
 
-ExpressApp.get('/api/twitch/searchChannels', buildHandler((req)=> searchChannels(req.session, req.query.term as string, twitch)))
+ExpressApp.get('/api/twitch/searchChannels', buildHandler((req)=> searchChannels(req.session, req.query.term as string)));
+ExpressApp.get('/api/twitch/followedStreams', buildHandler((req)=> getFollowedStreams(req.session)));
 
 ExpressApp.post('/api/twitch/webhook', buildHandler((req) => handleTwitchWebhook(req.headers, req.rawBody,
   { db: dbClient, scheduler, twitch })));

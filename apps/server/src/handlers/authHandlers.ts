@@ -102,7 +102,7 @@ export const redirectToTwitchLogin = async (session: AuthSession | null, referre
   const state = crypto.randomBytes(3).toString('hex');
   return new APIResponse<any>({
     data: {},
-    redirect: `https://id.twitch.tv/oauth2/authorize?client_id=${TWITCH_CLIENT_ID}&redirect_uri=${TWITCH_REDIRECT_URI}&response_type=code&state=${state}`,
+    redirect: `https://id.twitch.tv/oauth2/authorize?client_id=${TWITCH_CLIENT_ID}&redirect_uri=${TWITCH_REDIRECT_URI}&response_type=code&state=${state}&scope=user:read:follows`,
     cookies: [
       new Cookie(
         'session',
