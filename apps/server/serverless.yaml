@@ -1,0 +1,80 @@
+service: stream-speculator
+frameworkVersion: '2'
+configValidationMode: 'error'
+variablesResolutionMode: 20210326
+useDotenv: true
+
+plugins:
+  - serverless-bundle
+  - serverless-offline
+  - serverless-domain-manager
+
+custom:
+  customDomain:
+    http:
+      domainName: ${env:DOMAIN_NAME}
+      certificateName: ${env:DOMAIN_CERTIFICATE_NAME}
+      createRoute53Record: true
+      endpointType: 'regional'
+      autoDomain: true
+  bundle:
+    linting: false
+    tsConfig: 'tsconfig.app.json'
+    copyFiles:
+      - from: 'src/public/**'
+        to: './'
+  serverless-offline:
+    httpPort: 8080
+    noPrependStageInUrl: true
+
+provider:
+  name: aws
+  runtime: nodejs14.x
+  memorySize: 128
+  lambdaHashingVersion: 20201221
+  stage: ${opt:stage, 'dev'}
+  region: ${opt:region, 'us-east-1'}
+  stackName: ${self:service}-${self:provider.stage}
+  apiGateway:
+    binaryMediaTypes:
+      - '*/*'
+  environment:
+    PUBLIC_FOLDER_PATH: src/public
+    REGION: ${self:provider.region}
+    SQS_QUEUE_URL: !Ref TaskQueue
+    HOME_PAGE_URL: ${env:HOME_PAGE_URL}
+    DOMAIN_NAME: ${env:DOMAIN_NAME}
+    TWITCH_CLIENT_ID: ${env:TWITCH_CLIENT_ID}
+    TWITCH_CLIENT_SECRET: ${env:TWITCH_CLIENT_SECRET}
+    TWITCH_WEBHOOK_SECRET: ${env:TWITCH_WEBHOOK_SECRET}
+    TWITCH_WEBHOOK_CALLBACK: ${env:TWITCH_WEBHOOK_CALLBACK}
+    TWITCH_REDIRECT_URI: ${env:TWITCH_REDIRECT_URI}
+    TWITCH_TOKEN_ENCRYPTION_KEY: ${env:TWITCH_TOKEN_ENCRYPTION_KEY}
+    FAUNADB_SECRET: ${env:FAUNADB_SECRET}
+    COOKIE_SIGNING_KEY: ${env:COOKIE_SIGNING_KEY}
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - sqs:SendMessage
+        - sqs:SendMessageBatch
+      Resource:
+        - !GetAtt TaskQueue.Arn
+functions:
+  default:
+    handler: src/ServerlessExpressApp.handler
+    events:
+      - httpApi: '*'
+    timeout: 10
+  taskHandler:
+    handler: src/handlers/taskRouter.default
+    timeout: 15
+    events:
+      - sqs:
+          arn: !GetAtt TaskQueue.Arn
+
+resources:
+  Resources:
+    TaskQueue:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: ${self:service}-task-queue
