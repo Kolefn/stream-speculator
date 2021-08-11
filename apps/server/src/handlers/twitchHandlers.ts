@@ -1,6 +1,6 @@
 import { IncomingHttpHeaders } from 'http';
 import crypto from 'crypto';
-import { HelixEventSubSubscriptionStatus, HelixEventSubTransportData } from 'twitch/lib';
+import { AccessToken, HelixEventSubSubscriptionStatus, HelixEventSubTransportData } from 'twitch/lib';
 import {
   TwitchChannelPageData,
   TwitchChannel, StreamMetricType,
@@ -9,14 +9,17 @@ import {
   DBClient as DB,
   Bet,
   getPersonalNet,
+  SearchResult,
 } from '@stream-speculator/common';
-import { AuthSession } from './authHandlers';
+import { AuthSession, USER_COOKIE_TTL_MS } from './authHandlers';
 import NotFoundError from '../errors/NotFoundError';
 import Scheduler, { ScheduledTask, StreamMonitoringInitialTask, TaskType } from '../Scheduler';
 import TwitchClient from '../TwitchClient';
 import APIResponse from '../APIResponse';
 import { createPrediction } from '../augmentation';
 import { TWITCH_WEBHOOK_SECRET, IS_OFFLINE } from '../environment';
+import UnAuthorizedError from '../errors/UnAuthorizedError';
+import Cookie from '../Cookie';
 
 interface EventSubSubscriptionBody {
   id: string;
@@ -383,4 +386,43 @@ export const handleTaskStreamEvent = async (
       },
     })));
   }
+};
+
+
+export const searchChannels = async (session: AuthSession | null, term: string, twitch: TwitchClient) : Promise<APIResponse<SearchResult[]>> => {
+  if(!session || !session.twitchToken){
+    throw new UnAuthorizedError('search channels');
+  }
+
+  if(!term || term.trim() === ''){
+    return new APIResponse({ data: [] });
+  }
+  
+  let newToken: AccessToken | undefined; 
+  const api = twitch.getApiForUser(TwitchClient.decryptToken(session.twitchToken), (t)=> {
+    newToken = t;
+  });
+  const channels = await api.helix.search.searchChannels(term, { limit: '5' });
+
+  const users = await api.helix.users.getUsersByIds(channels.data.map((r)=> r.id));
+
+  const results = users.map((u)=> ({
+    displayName: u.displayName,
+    isLive: channels.data.some((c)=> c.id === u.id && c.isLive),
+    profileImageUrl: u.profilePictureUrl,
+  }));
+
+  return new APIResponse<SearchResult[]>({
+    data:  results,
+    cookies: newToken ? [
+      new Cookie(
+        'session',
+        {
+          ...session,
+          twitchToken: TwitchClient.encryptToken(newToken),
+        },
+        USER_COOKIE_TTL_MS,
+      ),
+    ] : [],
+  });
 };

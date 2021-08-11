@@ -19,6 +19,7 @@ const OutcomeButton = ({
       size="auto"
       variant="outline"
       borderColor={didBetOn ? TwitchPurpleLight : 'whiteAlpha.400'}
+      bg={didBetOn ? 'whiteAlpha.200' : 'whiteAlpha.100'}
       p="6px"
       onClick={() => onSelect(data.id)}
       disabled={disabled}

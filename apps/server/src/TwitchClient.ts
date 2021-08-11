@@ -1,5 +1,5 @@
 import {
-  AccessToken, ApiClient, HelixEventSubSubscription, HelixEventSubTransportOptions,
+  AccessToken, ApiClient, HelixEventSubSubscription, HelixEventSubTransportOptions, RefreshableAuthProvider, StaticAuthProvider,
 } from 'twitch';
 import { BasicPubSubClient } from 'twitch-pubsub-client';
 import Cryptr from 'cryptr';
@@ -41,6 +41,19 @@ export default class TwitchClient {
     this.pubsub = new BasicPubSubClient();
     this.db = dbClient;
     this.api = new ApiClient({ authProvider: this.auth });
+  }
+
+  getApiForUser(data: AccessToken, onRefresh: (newToken: AccessToken) => void) : ApiClient {
+    const authProvider = new RefreshableAuthProvider(
+      new StaticAuthProvider(TWITCH_CLIENT_ID, data.accessToken),
+      {
+          clientSecret: TWITCH_CLIENT_SECRET,
+          refreshToken: data.refreshToken,
+          expiry: data.expiryDate,
+          onRefresh
+      }
+  );
+    return new ApiClient({ authProvider });
   }
 
   async deleteSubs(subIds: string[]) : Promise<void> {
@@ -141,5 +154,15 @@ export default class TwitchClient {
       refreshToken: token.refreshToken,
       expiresAt: token.expiryDate?.getTime(),
     }));
+  }
+
+  static decryptToken(tokenStr: string) : AccessToken {
+    const token = JSON.parse(new Cryptr(TWITCH_TOKEN_ENCRYPTION_KEY as string).decrypt(tokenStr));
+
+    return new AccessToken({
+      access_token: token.accessToken,
+      refresh_token: token.refreshToken,
+      expires_in: (token.expiresAt - Date.now()) / 1000,
+    });
   }
 }

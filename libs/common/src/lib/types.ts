@@ -114,3 +114,10 @@ export type Bet = {
 };
 
 export type BetRequest = Pick<Bet, 'predictionId' | 'outcomeId' | 'coins'>;
+
+
+export type SearchResult = {
+  displayName: string;
+  profileImageUrl: string;
+  isLive: boolean;
+};
