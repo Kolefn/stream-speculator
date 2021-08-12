@@ -7,7 +7,7 @@ import TwitchClient from './TwitchClient';
 import { DBClient } from '@stream-speculator/common';
 import Scheduler from './Scheduler';
 import {
-  AuthSession, getDBToken, login, loginAsGuest, redirectFromTwitchLogin, redirectToTwitchLogin,
+  AuthSession, getDBToken, login, loginAsGuest, logout, redirectFromTwitchLogin, redirectToTwitchLogin,
 } from './handlers/authHandlers';
 import { getFollowedStreams, getTwitchChannelPageData, handleTwitchWebhook, searchChannels } from './handlers/twitchHandlers';
 import { handleBet, betRequestValidator } from './handlers/predictionHandlers';
@@ -75,14 +75,12 @@ ExpressApp.use((req, _res, next) => {
 });
 
 ExpressApp.get('/api/auth/dbToken', buildHandler((req) => getDBToken(req.session, dbClient)));
-
 ExpressApp.post('/api/auth/loginAsGuest', buildHandler((req) => loginAsGuest(req.session, dbClient)));
-
 ExpressApp.post('/api/auth/login', buildHandler((req) => login(req.session, dbClient, twitch)));
+ExpressApp.post('/api/auth/logout', buildHandler((req)=> logout(req.session)));
 
 ExpressApp.get('/api/twitch/redirectTo', buildHandler((req) => redirectToTwitchLogin(req.session, req.headers.referer)));
 ExpressApp.get('/api/twitch/redirectFrom', buildHandler((req) => redirectFromTwitchLogin(req.session, req.query.code as string, req.query.state as string, dbClient)));
-
 ExpressApp.get('/api/twitch/channel', buildHandler((req) => getTwitchChannelPageData({
   db: dbClient,
   twitch,
@@ -90,10 +88,8 @@ ExpressApp.get('/api/twitch/channel', buildHandler((req) => getTwitchChannelPage
   channelName: req.query.name as string,
   session: req.session,
 })));
-
 ExpressApp.get('/api/twitch/searchChannels', buildHandler((req)=> searchChannels(req.session, req.query.term as string)));
 ExpressApp.get('/api/twitch/followedStreams', buildHandler((req)=> getFollowedStreams(req.session)));
-
 ExpressApp.post('/api/twitch/webhook', buildHandler((req) => handleTwitchWebhook(req.headers, req.rawBody,
   { db: dbClient, scheduler, twitch })));
 

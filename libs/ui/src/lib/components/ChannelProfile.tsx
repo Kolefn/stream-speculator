@@ -5,22 +5,19 @@ import { TwitchPurpleLight } from '../colors';
 
 const ChannelProfile = observer(() => {
   const store = useChannelStore();
+  const isLoaded = Boolean(store.channel);
   return (
-    <Box>
-      {store.channel ? (
-        <Avatar
-          src={store.channel.profileImageUrl}
-          borderColor={TwitchPurpleLight}
-          borderWidth="2px"
-          w="60px"
-          h="60px"
-        >
-          {store.channel?.isLive && <AvatarBadge boxSize="1em" bg="red" />}
-        </Avatar>
-      ) : (
-        <SkeletonCircle w="60px" h="60px" />
-      )}
-    </Box>
+    <SkeletonCircle w="60px" h="60px" isLoaded={isLoaded}>
+      <Avatar
+        src={store.channel?.profileImageUrl}
+        borderColor={TwitchPurpleLight}
+        borderWidth="2px"
+        w="60px"
+        h="60px"
+      >
+        {store.channel?.isLive && <AvatarBadge boxSize="1em" bg="red" />}
+      </Avatar>
+    </SkeletonCircle>
   );
 });
 

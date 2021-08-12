@@ -439,15 +439,14 @@ export const getFollowedStreams = async (session: AuthSession | null) : Promise<
     newToken = t;
   });
 
-  const paginator = api.helix.streams.getFollowedStreamsPaginated(session.twitchId);
-  const streams = await paginator.getAll();
-  const users = await api.helix.users.getUsersByIds(streams.map((s)=> s.userId));
+  const streamsPage = await api.helix.streams.getFollowedStreams(session.twitchId, { limit: '10' });
+  const users = await api.helix.users.getUsersByIds(streamsPage.data.map((s)=> s.userId));
   return new APIResponse<FollowedStream[]>({
-    data: streams.map((s)=> ({
+    data: streamsPage.data.map((s)=> ({
       displayName: s.userDisplayName,
       title: s.title,
       profileImageUrl: users.find((u)=> u.id === s.userId)?.profilePictureUrl,
-      thumbnailUrl: s.thumbnailUrl,
+      thumbnailUrl: s.thumbnailUrl.replace('{width}', '440').replace('{height}', '248'),
     })),
     cookies: newToken ? [
       new Cookie(

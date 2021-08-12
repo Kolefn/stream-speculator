@@ -7,7 +7,7 @@ const ChannelMetaBar = observer(() => {
   const store = useChannelStore();
 
   return (
-    <HStack spacing="15px">
+    <HStack spacing="20px" justify="flex-start">
       <Stat>
         <StatLabel fontSize="xs" color="whiteAlpha.500">
           Uptime

@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import { exchangeCode, getTokenInfo } from 'twitch-auth';
+import { exchangeCode, getTokenInfo, revokeToken } from 'twitch-auth';
 import APIResponse from '../APIResponse';
 import Cookie from '../Cookie';
 import { DBClient as DB, FaunaTokenDoc, FaunaDoc, 
@@ -68,9 +68,9 @@ export const login = async (session: AuthSession | null, db: DB, twitch: TwitchC
     throw new UnAuthorizedError('login');
   }
 
-  const dbToken = await getDBToken(session, db);
-
+  
   if (session.isGuest) {
+    const dbToken = await getDBToken(session, db);
     return {
       userId: session.userId,
       dbToken,
@@ -88,6 +88,7 @@ export const login = async (session: AuthSession | null, db: DB, twitch: TwitchC
     throw new NotFoundError('twitch login user');
   }
 
+  const dbToken = await getDBToken(session, db);
   return {
     userId: session.userId,
     displayName: twitchUser?.displayName as string,
@@ -151,7 +152,7 @@ export const redirectFromTwitchLogin = async (
           DB.users.doc(session.userId),
           {
             isGuest: false,
-            _twitchId: tokenInfo.userId,
+            twitchId: tokenInfo.userId,
           },
         ),
         DB.useVar('existingUser'),
@@ -174,4 +175,20 @@ export const redirectFromTwitchLogin = async (
       ),
     ],
   });
+};
+
+
+export const logout = async (session: AuthSession | null) : Promise<APIResponse<any>> => {
+  if(!session || !session.twitchId){
+    throw new UnAuthorizedError('logout');
+  }
+
+  const token = TwitchClient.decryptToken(session.twitchToken);
+  await revokeToken(TWITCH_CLIENT_ID, token.accessToken);
+  return new APIResponse({
+    data: {},
+    cookies: [
+      new Cookie('session', {}, -1), // clear cookie by setting negative ttl
+    ]
+  })
 };

@@ -4,15 +4,22 @@ import { observer } from 'mobx-react-lite';
 
 const ChannelTitle = observer(() => {
   const store = useChannelStore();
+  const isLoaded = Boolean(store.channel);
   return (
     <Stack spacing="5px">
-      {store.channel ? (
+      <Skeleton
+        h={isLoaded ? 'auto' : '20px'}
+        w={isLoaded ? 'auto' : '100px'}
+        isLoaded={isLoaded}
+      >
         <Heading size="md">{store.channel?.displayName}</Heading>
-      ) : (
-        <Skeleton h="20px" w="100px" />
-      )}
-      {store.channel ? (
-        store.channel?.stream ? (
+      </Skeleton>
+      <Skeleton
+        h={isLoaded ? 'auto' : '20px'}
+        w={isLoaded ? 'auto' : '250px'}
+        isLoaded={isLoaded}
+      >
+        {store.channel?.stream ? (
           <Heading size="xs" color="whiteAlpha.900" fontWeight="normal">
             {store.channel?.stream?.title}
           </Heading>
@@ -25,10 +32,8 @@ const ChannelTitle = observer(() => {
           >
             currently offline
           </Heading>
-        )
-      ) : (
-        <Skeleton h="20px" w="250px" />
-      )}
+        )}
+      </Skeleton>
     </Stack>
   );
 });

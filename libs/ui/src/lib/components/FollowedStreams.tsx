@@ -24,6 +24,12 @@ const FollowedStreamItem = ({ data }: { data: FollowedStream }) => {
       overflow="hidden"
       maxW="250px"
       spacing="0px"
+      _hover={{
+        borderBottomWidth: '2px',
+        borderBottomColor: 'whiteAlpha.700',
+        transitionProperty: 'borderBottomWidth',
+        transitionDuration: 0.5,
+      }}
     >
       <Image src={data.thumbnailUrl} w="100%" />
       <HStack spacing="10px" p="10px">

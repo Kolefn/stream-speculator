@@ -5,7 +5,6 @@ import {
   Prediction, PredictionOutcome, StreamMetricPoint, StreamMetricType, TwitchChannel,
   fillPointGaps, DBClient, Bet, getPersonalNet, SearchResult
 } from '@stream-speculator/common';
-import throttle from 'lodash.throttle';
 
 // const MOCK_SEARCH_RESULTS: SearchResult[] = [
 //   {
@@ -30,7 +29,7 @@ import throttle from 'lodash.throttle';
 //   }
 // ];
 
-const throttledSearchChannels = throttle(searchChannels, 1000, { 'leading': true, 'trailing': true });
+let searchTimeout: NodeJS.Timeout | null = null;
 
 const updatePrediction = (
   prediction: Prediction,
@@ -163,6 +162,11 @@ export class ChannelStore {
   }
 
   search(text: string) {
+    if(searchTimeout){
+      clearTimeout(searchTimeout);
+      searchTimeout = null;
+    }
+
     if(!text || text.trim() === ''){
       return;
     }
@@ -172,20 +176,24 @@ export class ChannelStore {
       this.searchLoading = false;
       return;
     }
-    runInAction(()=> {
-      this.searchLoading = true;
-    });
-    throttledSearchChannels(text)?.then((results: SearchResult[])=> {
-      searchResultCache[text] = results;
+
+    searchTimeout = setTimeout(()=> {
+      searchTimeout = null;
       runInAction(()=> {
-        this.searchResults = results;
-        this.searchLoading = false;
+        this.searchLoading = true;
       });
-    }).catch(()=> {
-      runInAction(()=> {
-        this.searchLoading = false;
+      searchChannels(text).then((results: SearchResult[])=> {
+        searchResultCache[text] = results;
+        runInAction(()=> {
+          this.searchResults = results;
+          this.searchLoading = false;
+        });
+      }).catch(()=> {
+        runInAction(()=> {
+          this.searchLoading = false;
+        });
       });
-    });
+    }, 300);
   }
 
   searchGoTo(displayName?: string){
