@@ -294,9 +294,14 @@ export const handleTaskMonitorStreams = async (
   db: DB,
 ) => {
   const nextTasks: ScheduledTask[] = [];
-  const streamsChanged = await db.exec<boolean>(
-    DB.ifTrueSetFalse(DB.scheduledTasks.doc(TaskType.MonitorStreams.toString()), 'streamsChanged'),
-  );
+  let streamsChanged = true;
+  try {
+    streamsChanged = await db.exec<boolean>(
+      DB.ifTrueSetFalse(DB.scheduledTasks.doc(TaskType.MonitorStreams.toString()), 'streamsChanged'),
+    );
+  }catch(e){
+    console.error(e);
+  }
   if (streamsChanged) {
     await db.forEachPage<FaunaRef>(DB.channels.with('isLive', true), async (page) => {
       if (page.data.length > 0) {

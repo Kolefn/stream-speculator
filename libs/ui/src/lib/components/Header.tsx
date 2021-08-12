@@ -92,7 +92,7 @@ const Header = ({ showSearch }: { showSearch?: boolean }) => {
       {showSiteTitle && (
         <HStack justify="center" align="center" spacing="10px" w="100%">
           <LogoIcon fontSize="md" />
-          <Heading fontWeight="hairline" textTransform="uppercase" size="md">
+          <Heading fontWeight="thin" textTransform="uppercase" size="md">
             Stream Speculator
           </Heading>
         </HStack>

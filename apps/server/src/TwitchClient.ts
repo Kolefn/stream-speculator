@@ -45,13 +45,13 @@ export default class TwitchClient {
 
   static getApiForUser(data: AccessToken, onRefresh: (newToken: AccessToken) => void) : ApiClient {
     const authProvider = new RefreshableAuthProvider(
-      new StaticAuthProvider(TWITCH_CLIENT_ID, data.accessToken),
+      new StaticAuthProvider(TWITCH_CLIENT_ID, data.accessToken, ['user:read:follows'], 'user'),
       {
           clientSecret: TWITCH_CLIENT_SECRET,
           refreshToken: data.refreshToken,
           expiry: data.expiryDate,
           onRefresh
-      }
+      },
   );
     return new ApiClient({ authProvider });
   }

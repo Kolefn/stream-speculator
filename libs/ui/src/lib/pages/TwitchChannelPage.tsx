@@ -5,6 +5,7 @@ import { observer } from 'mobx-react-lite';
 import ChannelHeader from '../components/ChannelHeader';
 import Header from '../components/Header';
 import PredictionList from '../components/PredictionList';
+import { useEffect } from 'react';
 const TwitchChannelPage = observer(() => {
   const store = useChannelStore();
   const notFound =

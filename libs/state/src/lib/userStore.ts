@@ -34,6 +34,8 @@ export class UserStore {
   coins = 0;
   wins = 0;
 
+  didAcceptCookies = false;
+
   id: string | null = null;
 
   dbToken: DBToken | null = null;
@@ -60,6 +62,12 @@ export class UserStore {
 
   constructor() {
     makeAutoObservable(this);
+    this.didAcceptCookies = localStorage.getItem('stream-speculator-accepted-cookies') === 'true';
+  }
+
+  acceptCookies(){
+    this.didAcceptCookies = true;
+    localStorage.setItem('stream-speculator-accepted-cookies', 'true');
   }
   
   logout(){

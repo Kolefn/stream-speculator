@@ -1,4 +1,4 @@
-import { Container, Heading, Stack } from '@chakra-ui/react';
+import { Collapse, Container, Heading, Stack } from '@chakra-ui/react';
 import { useUserStore } from '@stream-speculator/state';
 import { observer } from 'mobx-react-lite';
 import FollowedStreams from '../components/FollowedStreams';
@@ -7,14 +7,13 @@ import Search from '../components/Search';
 
 const HomepageBlurb = observer(() => {
   const store = useUserStore();
-  if (store.followedStreams.length > 0) {
-    return null;
-  }
   return (
     <Container maxW="container.md">
-      <Heading size="2xl" fontWeight="extrabold">
-        Automated Twitch Predictions with cross-channel points.
-      </Heading>
+      <Collapse in={store.followedStreams.length === 0} animateOpacity>
+        <Heading size="2xl" fontWeight="extrabold">
+          Automated Twitch Predictions with cross-channel points.
+        </Heading>
+      </Collapse>
     </Container>
   );
 });

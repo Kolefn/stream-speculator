@@ -81,6 +81,12 @@ export class ChannelStore {
   async load(channelName: string) {
     try {
       runInAction(()=> {
+        if(this.channel && this.channel.displayName.toLocaleLowerCase() !== channelName.toLocaleLowerCase()){
+          this.channel = null;
+          this.predictions = [];
+          this.bets = [];
+          this.selectedOutcomeId = undefined;
+        }
         this.loadError = null;
       });
       const result = await getTwitchChannelPageData(channelName);

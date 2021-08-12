@@ -1,3 +1,4 @@
+import { Button, Heading, Stack } from '@chakra-ui/react';
 import { useChannelStore, useUserStore } from '@stream-speculator/state';
 import {
   Homepage,
@@ -75,25 +76,56 @@ const OnHomepageLoad = observer(() => {
   return null;
 });
 
-export function App() {
+const RouterWithCookiePermissionPrompt = observer(() => {
+  const store = useUserStore();
+
+  if (!store.didAcceptCookies) {
+    return (
+      <Stack h="100%" w="100%" justify="center" align="center" spacing="10px">
+        <Heading size="lg" fontWeight="extrabold">
+          <span role="img" aria-label="chocolate chip cookie emoji">
+            🍪
+          </span>{' '}
+          Cookies
+        </Heading>
+        <Heading size="xs" fontWeight="normal" color="whiteAlpha.800">
+          This site uses secure cookies for authenticating with Twitch, the
+          server, and database.
+        </Heading>
+        <Button
+          variant="outline"
+          color="whiteAlpha.900"
+          onClick={() => store.acceptCookies()}
+        >
+          Accept All Cookies
+        </Button>
+      </Stack>
+    );
+  }
+  return (
+    <BrowserRouter>
+      <Switch>
+        <Route path="/twitch/:channelName">
+          <TwitchChannelPageWithData />
+        </Route>
+        <Route path="/">
+          <OnHomepageLoad />
+          <Homepage />
+        </Route>
+      </Switch>
+    </BrowserRouter>
+  );
+});
+
+const App = () => {
   return (
     <StateProvider>
       <UIProvider>
         <OnAppLoad />
-        <BrowserRouter>
-          <Switch>
-            <Route path="/twitch/:channelName">
-              <TwitchChannelPageWithData />
-            </Route>
-            <Route path="/">
-              <OnHomepageLoad />
-              <Homepage />
-            </Route>
-          </Switch>
-        </BrowserRouter>
+        <RouterWithCookiePermissionPrompt />
       </UIProvider>
     </StateProvider>
   );
-}
+};
 
 export default App;
