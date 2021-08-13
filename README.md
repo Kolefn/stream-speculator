@@ -25,5 +25,5 @@ I worked on this project to learn FaunaDB and to exercise serverless application
    ```
 5. run `npm run serverless login` to setup the Serverless Framework CLI with AWS account credentials
 6. build the client with `npm run client:build:prod`
-7. deploy `npm run server:deploy` or run locally with `npm run nx run server:serve`
-8. remove deployment with `npm run nx run server:remove`
+7. deploy `npm run server:deploy:dev` or run locally with `npm run server:local`
+8. remove deployment with `npm run server:remove:dev`

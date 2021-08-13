@@ -6,7 +6,10 @@
     "nx": "nx",
     "client:build:prod": "nx run client:build --prod",
     "analyze:client": "webpack-bundle-analyzer apps/server/src/public/stats.json",
-    "server:deploy": "nx deploy server"
+    "server:deploy:dev": "nx run server:deploy --stage dev",
+    "server:deploy:prod": "cli-confirm \"DEPLOY PRODUCTION?\" && nx run server:deploy --stage prod",
+    "server:remove:dev": "cli-confirm \"REMOVE DEVELOPMENT?\" && nx run server:remove --stage dev",
+    "server:local": "npm run nx run server:serve"
   },
   "private": true,
   "dependencies": {
@@ -21,7 +24,6 @@
     "express-validator": "^6.12.1",
     "faunadb": "^4.3.0",
     "framer-motion": "^4.1.17",
-    "lodash.throttle": "^4.1.1",
     "mobx": "^6.3.2",
     "mobx-react-lite": "^3.2.0",
     "react": "17.0.2",
@@ -66,6 +68,7 @@
     "@typescript-eslint/parser": "~4.28.3",
     "babel-jest": "27.0.6",
     "babel-loader": "8.1.0",
+    "cli-confirm": "^1.0.1",
     "cypress": "^7.3.0",
     "dotenv": "~10.0.0",
     "eslint": "7.22.0",
