@@ -7,7 +7,7 @@ I worked on this project to learn FaunaDB and to exercise serverless application
 ## Setup
 
 1. create a FaunaDB database and initialize it with the commands at `apps/server/faunadb.txt`
-2. register an app with the Twitch API
+2. register an app with the Twitch API. Register the auth uri matching `TWITCH_REDIRECT_URI` in the environment. You will also need to register `http://localhost:8080/api/twitch/redirectFrom` for local deployment.
 3. (optional) register a domain with AWS and create a SSL certificate with AWS CM.
 4. populate a `.env.dev` or `.env` file in `apps/server` according to the following template:
    ```
