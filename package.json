@@ -4,9 +4,9 @@
   "license": "MIT",
   "scripts": {
     "nx": "nx",
-    "build:client:prod": "nx run client:build --prod",
+    "client:build:prod": "nx run client:build --prod",
     "analyze:client": "webpack-bundle-analyzer apps/server/src/public/stats.json",
-    "deploy:server": "nx deploy server"
+    "server:deploy": "nx deploy server"
   },
   "private": true,
   "dependencies": {
