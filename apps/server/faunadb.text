@@ -1,163 +1,151 @@
-CreateCollection({name: "Channels", history_days: 0 })
-CreateCollection({name: "StreamMetrics", history_days: 0 })
-CreateCollection({name: "TwitchWebhookSubs", history_days: 0 })
-CreateCollection({name: "TwitchClientAccessTokens", history_days: 0 })
-CreateCollection({name: "ScheduledTasks", history_days: 0 })
-CreateCollection({name: "Users", history_days: 0  })
-CreateCollection({name: "Predictions", history_days: 0 })
-CreateCollection({name: "Bets", history_days: 0 })
-CreateCollection({name: "Outcomes", history_days: 0 })
-
-CreateIndex({
-  name: "Channels_by_userName",
-  source: Collection("Channels"),
-  terms: [
-    { field: ["data", "userName"]}
-  ]
-})
-
-CreateIndex({
-  name: "Channels_by_isLive",
-  source: Collection("Channels"),
-  terms: [
-    { field: ["data", "isLive"]}
-  ]
-})
-
-CreateIndex({
-  name: "ScheduledTasks_by_name",
-  source: Collection("ScheduledTasks"),
-  terms: [
-    { field: ["data", "name"]}
-  ]
-})
-
-CreateIndex({
-  name: "TwitchWebhookSubs_by_channelRef",
-  source: Collection("TwitchWebhookSubs"),
-  terms: [
-    { field: ["data", "channelRef"] },
-  ]
-})
-
-
-CreateIndex({
-  name: "Predictions_by_channelRef",
-  source: Collection("Predictions"),
-  terms: [
-    { field: ["data", "channelRef"] },
-  ],
-  values: [
-    { field: ["data", "locksAt"], reverse: true },
-    { field: ["ref"] },
-  ]
-})
-
-CreateIndex({
-  name: "Predictions_by_channelRef_status",
-  source: Collection("Predictions"),
-  terms: [
-    { field: ["data", "channelRef"] },
-    { field: ["data", "status"] },
-  ],
-})
-
-CreateIndex({
-  name: "Bets_by_predictionRef",
-  source: Collection("Bets"),
-  terms: [
-    { field: ["data", "predictionRef"] },
-  ]
-})
-
-CreateIndex({
-  name: "Bets_by_channelRef_userRef",
-  source: Collection("Bets"),
-  terms: [
-    { field: ["data", "channelRef"] },
-    { field: ["data", "userRef"] },
-  ]
-})
-
-CreateIndex({
-  name: "Bets_by_predictionRef_outcomeRef_userRef",
-  source: Collection("Bets"),
-  terms: [
-    { field: ["data", "predictionRef"] },
-    { field: ["data", "outcomeRef"] },
-    { field: ["data", "userRef"] },
-  ]
-})
-
-
-CreateIndex({
-  name: "Users_by_twitchId",
-  source: Collection("Users"),
-  terms: [
-    { field: ["data", "twitchId"] },
-  ]
-})
-
-CreateRole({
-  name: "Guest",
-  membership: [
-    {
-      resource: Collection("Users"),
-      predicate: Query(
-        Lambda("ref", Select(["data", "isGuest"], Get(Var("ref")), false))
-      )
-    }
-  ],
-  privileges: [
-    {
-      resource: Collection("StreamMetrics"),
-      actions: {
-        read: true,
+Do(
+  CreateCollection({name: "Channels", history_days: 0 }),
+  CreateCollection({name: "StreamMetrics", history_days: 0 }),
+  CreateCollection({name: "TwitchWebhookSubs", history_days: 0 }),
+  CreateCollection({name: "TwitchClientAccessTokens", history_days: 0 }),
+  CreateCollection({name: "ScheduledTasks", history_days: 0 }),
+  CreateCollection({name: "Users", history_days: 0  }),
+  CreateCollection({name: "Predictions", history_days: 0 }),
+  CreateCollection({name: "Bets", history_days: 0 }),
+  CreateCollection({name: "Outcomes", history_days: 0 }),
+  CreateIndex({
+    name: "Channels_by_userName",
+    source: Collection("Channels"),
+    terms: [
+      { field: ["data", "userName"]}
+    ]
+  }),
+  CreateIndex({
+    name: "Channels_by_isLive",
+    source: Collection("Channels"),
+    terms: [
+      { field: ["data", "isLive"]}
+    ]
+  }),
+  CreateIndex({
+    name: "ScheduledTasks_by_name",
+    source: Collection("ScheduledTasks"),
+    terms: [
+      { field: ["data", "name"]}
+    ]
+  }),
+  CreateIndex({
+    name: "TwitchWebhookSubs_by_channelRef",
+    source: Collection("TwitchWebhookSubs"),
+    terms: [
+      { field: ["data", "channelRef"] },
+    ]
+  }),
+  CreateIndex({
+    name: "Predictions_by_channelRef",
+    source: Collection("Predictions"),
+    terms: [
+      { field: ["data", "channelRef"] },
+    ],
+    values: [
+      { field: ["data", "locksAt"], reverse: true },
+      { field: ["ref"] },
+    ]
+  }),
+  CreateIndex({
+    name: "Predictions_by_channelRef_status",
+    source: Collection("Predictions"),
+    terms: [
+      { field: ["data", "channelRef"] },
+      { field: ["data", "status"] },
+    ],
+  }),
+  CreateIndex({
+    name: "Bets_by_predictionRef",
+    source: Collection("Bets"),
+    terms: [
+      { field: ["data", "predictionRef"] },
+    ]
+  }),
+  CreateIndex({
+    name: "Bets_by_channelRef_userRef",
+    source: Collection("Bets"),
+    terms: [
+      { field: ["data", "channelRef"] },
+      { field: ["data", "userRef"] },
+    ]
+  }),
+  CreateIndex({
+    name: "Bets_by_predictionRef_outcomeRef_userRef",
+    source: Collection("Bets"),
+    terms: [
+      { field: ["data", "predictionRef"] },
+      { field: ["data", "outcomeRef"] },
+      { field: ["data", "userRef"] },
+    ]
+  }),
+  CreateIndex({
+    name: "Users_by_twitchId",
+    source: Collection("Users"),
+    terms: [
+      { field: ["data", "twitchId"] },
+    ]
+  }),
+  CreateRole({
+    name: "Guest",
+    membership: [
+      {
+        resource: Collection("Users"),
+        predicate: Query(
+          Lambda("ref", Select(["data", "isGuest"], Get(Var("ref")), false))
+        )
       }
-    },
-    {
-      resource: Collection("Users"),
-      actions: {
-        read: Query(Lambda("ref", Equals(CurrentIdentity(), Var("ref")))),
+    ],
+    privileges: [
+      {
+        resource: Collection("StreamMetrics"),
+        actions: {
+          read: true,
+        }
+      },
+      {
+        resource: Collection("Users"),
+        actions: {
+          read: Query(Lambda("ref", Equals(CurrentIdentity(), Var("ref")))),
+        }
+      },
+      {
+        resource: Collection("Channels"),
+        actions: {
+          read: true,
+        }
       }
-    },
-    {
-      resource: Collection("Channels"),
-      actions: {
-        read: true,
+    ]
+  }),
+  CreateRole({
+    name: "DefaultUser",
+    membership: [
+      {
+        resource: Collection("Users"),
+        predicate: Query(
+          Lambda("ref", Equals(Select(["data", "isGuest"], Get(Var("ref")), false), false))
+        )
       }
-    }
-  ]
-})
-
-CreateRole({
-  name: "DefaultUser",
-  membership: [
-    {
-      resource: Collection("Users"),
-      predicate: Query(
-        Lambda("ref", Equals(Select(["data", "isGuest"], Get(Var("ref")), false), false))
-      )
-    }
-  ],
-  privileges: [
-    {
-      resource: Collection("StreamMetrics"),
-      actions: {
-        read: true,
+    ],
+    privileges: [
+      {
+        resource: Collection("StreamMetrics"),
+        actions: {
+          read: true,
+        }
+      },
+      {
+        resource: Collection("Users"),
+        actions: {
+          read: Query(Lambda("ref", Equals(CurrentIdentity(), Var("ref")))),
+        }
+      },
+      {
+        resource: Collection("Channels"),
+        actions: {
+          read: true,
+        }
       }
-    },
-    {
-      resource: Collection("Users"),
-      actions: {
-        read: Query(Lambda("ref", Equals(CurrentIdentity(), Var("ref")))),
-      }
-    },
-    {
-      resource: Collection("Channels"),
-      actions: {
-        read: true,
-      }
-    }
-  ]
-})
+    ]
+  })
+)
