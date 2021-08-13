@@ -83,6 +83,7 @@ const OutcomesMenu = observer(
                 });
               }
             }}
+            p="7px"
           >
             {rounded}
           </Button>
@@ -93,7 +94,7 @@ const OutcomesMenu = observer(
 
     const betOptions = useMemo(() => {
       return (
-        <Wrap spacing="5px">
+        <Wrap spacing="7px">
           {user.coins / 10 >= 100 && (
             <WrapItem>
               <BetButton value={user.coins / 10} />

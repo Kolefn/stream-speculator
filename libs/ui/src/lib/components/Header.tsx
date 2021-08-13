@@ -10,6 +10,7 @@ import {
   MenuItem,
   SkeletonCircle,
   Flex,
+  Badge,
 } from '@chakra-ui/react';
 import { useUserStore } from '@stream-speculator/state';
 import { observer } from 'mobx-react-lite';
@@ -91,10 +92,11 @@ const Header = ({ showSearch }: { showSearch?: boolean }) => {
       )}
       {showSiteTitle && (
         <HStack justify="center" align="center" spacing="10px" w="100%">
-          <LogoIcon fontSize="md" />
+          <LogoIcon fontSize="lg" />
           <Heading fontWeight="thin" textTransform="uppercase" size="md">
             Stream Speculator
           </Heading>
+          <Badge colorScheme="green">Beta</Badge>
         </HStack>
       )}
       <HStack spacing="10px" justify="flex-end" w="100%">

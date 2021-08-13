@@ -85,11 +85,16 @@ const SearchResults = observer(() => {
 const SearchBody = () => {
   const store = useChannelStore();
   const userStore = useUserStore();
-  const onKeyPress = useCallback((e) => {
-    if (e.key === 'Enter') {
-      store.searchGoTo();
-    }
-  }, []);
+  const onKeyPress = useCallback(
+    (e) => {
+      if (e.key === 'Enter') {
+        store.searchGoTo(
+          store.searchResults.length === 0 ? e.target.value : undefined
+        );
+      }
+    },
+    [store.searchResults.length]
+  );
   const onChangeEvent = useCallback(
     (e) => {
       if (!userStore.isGuest) {

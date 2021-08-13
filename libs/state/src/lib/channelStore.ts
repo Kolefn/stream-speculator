@@ -203,7 +203,7 @@ export class ChannelStore {
   }
 
   searchGoTo(displayName?: string){
-    if(!displayName && this.searchResults.length === 0){
+    if(!displayName){
       return;
     }
     document.location.href = `/twitch/${displayName ?? this.searchResults[this.searchSelectIndex].displayName}`;

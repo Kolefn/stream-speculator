@@ -1,4 +1,4 @@
-import { Button, Heading, Stack } from '@chakra-ui/react';
+import { Button, Container, Heading, Stack } from '@chakra-ui/react';
 import { useChannelStore, useUserStore } from '@stream-speculator/state';
 import {
   Homepage,
@@ -81,17 +81,26 @@ const RouterWithCookiePermissionPrompt = observer(() => {
 
   if (!store.didAcceptCookies) {
     return (
-      <Stack h="100%" w="100%" justify="center" align="center" spacing="10px">
-        <Heading size="lg" fontWeight="extrabold">
-          <span role="img" aria-label="chocolate chip cookie emoji">
-            🍪
-          </span>{' '}
-          Cookies
-        </Heading>
-        <Heading size="xs" fontWeight="normal" color="whiteAlpha.800">
-          This site uses secure cookies for authenticating with Twitch, the
-          server, and database.
-        </Heading>
+      <Stack
+        h="100%"
+        w="100%"
+        justify="center"
+        align="center"
+        spacing="20px"
+        p="25px"
+      >
+        <Container justifyContent="center" alignItems="center">
+          <Heading size="lg" fontWeight="extrabold">
+            <span role="img" aria-label="chocolate chip cookie emoji">
+              🍪
+            </span>{' '}
+            Cookies
+          </Heading>
+          <Heading size="xs" fontWeight="normal" color="whiteAlpha.800">
+            This site uses secure cookies for authenticating with Twitch, the
+            server, and the database.
+          </Heading>
+        </Container>
         <Button
           variant="outline"
           color="whiteAlpha.900"
